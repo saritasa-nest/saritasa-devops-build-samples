@@ -1,0 +1,14 @@
+# can be used to test kyverno policies or pod security admission controller
+# https://medium.com/geekculture/pod-security-admission-controller-namespace-level-52158281d918
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    run: pod-privileged
+  name: pod-privileged
+spec:
+  containers:
+  - image: nginx
+    name: pod-privileged
+    securityContext:
+       privileged: true
