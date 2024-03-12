@@ -1,0 +1,1 @@
+tests: ./vendor/bin/pest --cache-directory /tmp/tests-results

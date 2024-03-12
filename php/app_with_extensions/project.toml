@@ -1,0 +1,11 @@
+[[build.env]]
+name='BP_WEB_SERVER_ROOT'
+value='.'
+
+[[build.env]]
+name='BP_PHP_VERSION'
+value='8.2.15'
+
+[[build.env]]
+name='BP_COMPOSER_INSTALL_OPTIONS'
+value=''

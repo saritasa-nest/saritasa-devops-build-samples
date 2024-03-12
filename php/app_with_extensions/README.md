@@ -18,3 +18,8 @@ the `.php.ini.d` directory. It runs with the built-in PHP server.
 ## Stack Support
 
 The Paketo PHP buildpack requires the Full Jammy Stack. See [stack docs](https://paketo.io/docs/concepts/stacks) for more details
+
+## Tests
+
+See instructions: <https://pestphp.com/docs/installation>
+
