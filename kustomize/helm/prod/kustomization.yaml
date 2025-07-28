@@ -1,0 +1,27 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: prod
+
+configMapGenerator:
+  - name: crm-ingress-properties
+    envs: [environment.properties]
+
+helmGlobals:
+  chartHome: ../helm-charts
+
+helmCharts:
+  - name: crm
+    releaseName: crm
+    valuesFile: values.yaml
+    valuesMerge: merge
+
+vars:
+  - name: HOST
+    objref: { kind: ConfigMap, name: crm-ingress-properties, apiVersion: v1 }
+    fieldref: { fieldpath: data.HOST }
+
+images:
+  - name: crm
+    newName: 365481460819.dkr.ecr.us-west-2.amazonaws.com/sportsthread/prod/crm-v2-backend
+    newTag: prod-26ec8d0

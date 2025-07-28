@@ -1,0 +1,84 @@
+crm:
+  deployment:
+    image:
+      repository: crm
+      pullPolicy: IfNotPresent   
+    initContainers:
+      install:
+        image: crm
+        imagePullPolicy: IfNotPresent
+        command:
+          - gomplate
+          - --file=.env.gomplate
+          - --out=/tmp/workdir/.env
+        securityContext:
+          allowPrivilegeEscalation: false
+          privileged: false
+          capabilities:
+            drop:
+              - all
+        envFrom:
+          - secretRef:
+              name: crm-env
+        volumeMounts:
+          - name: workdir
+            mountPath: /tmp/workdir
+    command:
+      - launcher
+      - bash
+      - -c
+      - |
+        flask --app autoapp run --debug --host=0.0.0.0
+    volumes:
+      tmp-volume:
+        emptyDir:
+          sizeLimit: 500Mi
+      workdir:
+        emptyDir:
+          sizeLimit: 500Mi
+  job:
+    enabled: true
+    jobs:
+      migration:
+        image:
+          repository: crm
+        resources:
+          limits:
+            memory: 500Mi
+            cpu: 500m
+          requests:
+            memory: 150Mi
+            cpu: 50m
+        command:
+          - migrations
+  ingress:
+    enabled: true
+    ingressClassName: nginx
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-prod
+      nginx.ingress.kubernetes.io/add-base-url: 'true'
+      nginx.ingress.kubernetes.io/rewrite-target: /
+      nginx.ingress.kubernetes.io/enable-cors: 'true'
+      nginx.ingress.kubernetes.io/cors-allow-origin: >-
+        https://ai.usummitapp.net,
+        http://localhost:3000
+    hosts:
+      - host: $(HOST)
+        paths:
+          - path: /
+            pathType: Prefix
+            serviceName: backend
+            servicePort: http
+    tls:
+      - hosts:
+          - $(HOST)
+        secretName: $(HOST)-crt
+
+worker:
+  enabled: true
+  deployment:
+    image:
+      repository: crm
+      pullPolicy: IfNotPresent   
+    command:
+      - worker

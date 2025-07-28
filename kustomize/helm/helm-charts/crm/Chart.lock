@@ -1,0 +1,9 @@
+dependencies:
+- name: application
+  repository: https://stakater.github.io/stakater-charts/
+  version: 6.5.0
+- name: application
+  repository: https://stakater.github.io/stakater-charts/
+  version: 6.5.0
+digest: sha256:6cd0ff9168d8325f266e9c1f56a93253ac41ec8cbea4538e35cc1524dfc0c9df
+generated: "2025-07-28T16:43:03.832489742-05:00"
