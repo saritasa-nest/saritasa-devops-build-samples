@@ -3,11 +3,12 @@ package war_test
 import (
 	"flag"
 	"fmt"
-	"github.com/paketo-buildpacks/samples/tests"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/paketo-buildpacks/samples/tests"
 
 	"github.com/paketo-buildpacks/occam"
 	"github.com/sclevine/spec"
@@ -69,7 +70,7 @@ func testWARWithBuilder(builder string) func(*testing.T, spec.G, spec.S) {
 			it.After(func() {
 				err := docker.Container.Remove.Execute(container.ID)
 				if err != nil {
-					Expect(err).To(MatchError("failed to remove docker container: exit status 1: Container name cannot be empty"))
+					Expect(err).To(MatchError("failed to remove docker container: exit status 1: container name cannot be empty"))
 				} else {
 					Expect(err).ToNot(HaveOccurred())
 				}
@@ -96,12 +97,13 @@ func testWARWithBuilder(builder string) func(*testing.T, spec.G, spec.S) {
 					image, logs, err = pack.Build.
 						WithPullPolicy("never").
 						WithBuilder(builder).
+						WithEnv(map[string]string{"BP_TOMCAT_VERSION": "10.1"}).
 						Execute(name, source)
 					Expect(err).ToNot(HaveOccurred(), logs.String)
 
 					Expect(logs).To(ContainLines(ContainSubstring("Paketo Buildpack for CA Certificates")))
 					Expect(logs).To(ContainLines(ContainSubstring("Paketo Buildpack for BellSoft Liberica")))
-					Expect(logs).To(ContainLines(ContainSubstring("Paketo Buildpack for Maven")))
+					Expect(logs).To(ContainLines(ContainSubstring("Paketo Buildpack for Gradle")))
 					Expect(logs).To(ContainLines(ContainSubstring("Paketo Buildpack for Apache Tomcat")))
 
 					container, err = docker.Container.Run.
