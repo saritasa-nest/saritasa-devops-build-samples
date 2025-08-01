@@ -4,7 +4,7 @@ value='.'
 
 [[build.env]]
 name='BP_PHP_VERSION'
-value='8.2.15'
+value='8.2.18'
 
 [[build.env]]
 name='BP_COMPOSER_INSTALL_OPTIONS'
