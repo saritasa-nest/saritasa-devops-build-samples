@@ -1,7 +1,7 @@
 {
   "name": "vue_app",
   "dependencies": {
-    "vue": "^2.6.11"
+    "vue": "^3.0.0"
   },
   "description": "Sample Node.js Vue Application using Npm",
   "devDependencies": {
