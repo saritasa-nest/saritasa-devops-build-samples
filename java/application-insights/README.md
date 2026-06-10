@@ -35,3 +35,5 @@ docker run --rm --env SERVICE_BINDING_ROOT=/bindings --volume "$(pwd)/binding:/b
 ```bash
 curl -s http://localhost:8080/actuator/health | jq .
 ```
+
+## Adapt something change here
