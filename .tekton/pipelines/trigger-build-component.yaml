@@ -1,0 +1,71 @@
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: build-deploy-single-component
+  namespace: saritasa-devops-project
+spec:
+  params:
+    - name: repo-url
+      type: string
+      description: The URL of the Git repository to fetch
+    - name: revision
+      type: string
+      description: The Git revision (branch, tag, commit SHA) to fetch
+    - name: image-url
+      type: string
+      description: URL of the image to be built and pushed
+    - name: image-tag
+      type: string
+      description: Tag of the image built from paketo
+    - name: project-dir
+      type: string
+      description: Full path of the project's directory to be built
+    - name: component-name
+      type: string
+      description: Name of the component being built
+    - name: replicas
+      type: string
+      description: Number of replicas for the deployment
+      default: "1"
+
+  workspaces:
+    - name: source
+      description: Workspace containing this repository's source code
+    - name: basic-auth
+      description: Git credentials
+      optional: true
+    - name: docker-config
+      description: Docker's config.json for pushing image
+
+  tasks:
+    - name: build-and-push-component
+      taskRef:
+        name: build-push-image
+      params:
+        - name: image-url
+          value: $(params.image-url)
+        - name: image-tag
+          value: $(params.image-tag)
+        - name: component-dir
+          value: $(params.project-dir)
+      workspaces:
+        - name: source
+          workspace: source
+        - name: docker-config
+          workspace: docker-config
+
+    - name: deploy-application
+      taskRef:
+        name: deploy-to-kubernetes
+      runAfter:
+        - build-and-push-component
+      params:
+        - name: image-url
+          value: $(tasks.build-and-push-component.results.image-full-url)
+        - name: component-name
+          value: $(params.component-name)
+        - name: replicas
+          value: $(params.replicas)
+        - name: namespace
+          value: $(tasks.build-and-push-component.results.component-name)
+      

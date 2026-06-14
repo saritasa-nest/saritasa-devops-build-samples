@@ -1,0 +1,29 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: detect-changed-components
+  namespace: saritasa-devops-project
+spec:
+  description: A task to detect which components in this repository have changes
+
+  workspaces:
+    - name: source
+  
+  results:
+    - name: changed-dirs
+      description: All directories with file changes
+      type: string
+
+  steps:
+    - name: detect-change
+      image: alpine/git:latest
+      workingDir: $(workspaces.source.path)
+      script: |
+        #!/bin/sh
+        set -eu
+
+        git config --global --add safe.directory .
+
+        changed_dirs="$(git diff HEAD~1 HEAD --name-only | xargs -I {} dirname "{}" | sort -u | tr '\n' ' ' | sed 's/[[:space:]]*$//')"
+
+        printf "%s" "$changed_dirs" | tee "$(results.changed-dirs.path)"

@@ -1,0 +1,37 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: pipeline-as-code-controller-ingress
+  namespace: pipelines-as-code
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: hook.saritasa.test.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: pipelines-as-code-controller
+                port:
+                  number: 8080
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: dashboard-ingress
+  namespace: tekton-pipelines
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: dashboard.saritasa.test.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: tekton-dashboard
+                port:
+                  number: 9097

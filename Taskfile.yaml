@@ -1,0 +1,147 @@
+version: 3
+
+vars:
+  TKN_CLI_VERSION: "0.43.2"
+  TKN_PAC_VERSION: "0.39.7"
+  GOSMEE_VERSION: "0.31.1"
+  REPOSITORY_NAME: "jack20001413-saritasa-devops-build-samples"
+  K8S_VERSION: "v1.33.0"
+  PROJECT_NAMESPACE: "saritasa-devops-project"
+  WEBHOOK_ENDPOINT: "https://hook.pipelinesascode.com/eNfKMYotggve"
+
+tasks:
+  default:
+    desc: "Default task to run when no task is specified."
+    cmd: task --list
+
+  install:tekton-cli:
+    desc: "Install Tekton CLI."
+    cmds:
+      - curl -LO "https://github.com/tektoncd/cli/releases/download/v{{.TKN_CLI_VERSION}}/tektoncd-cli-{{.TKN_CLI_VERSION}}_Linux-64bit.deb"
+      - sudo dpkg -i "./tektoncd-cli-{{.TKN_CLI_VERSION}}_Linux-64bit.deb"
+      - sudo rm "./tektoncd-cli-{{.TKN_CLI_VERSION}}_Linux-64bit.deb"
+
+  install:tekton-pac:
+    desc: "Install Tekton Pipeline-as-Code"
+    cmds:
+      - curl -LO "https://github.com/tektoncd/pipelines-as-code/releases/download/v{{.TKN_PAC_VERSION}}/tkn-pac-{{.TKN_PAC_VERSION}}_linux-x86_64.deb"
+      - sudo dpkg -i "./tkn-pac-{{.TKN_PAC_VERSION}}_linux-x86_64.deb"
+      - sudo rm "./tkn-pac-{{.TKN_PAC_VERSION}}_linux-x86_64.deb"
+
+  install:gosmee:
+    desc: "Install Gosmee CLI."
+    cmds:
+      - curl -LO "https://github.com/chmouel/gosmee/releases/download/v{{.GOSMEE_VERSION}}/gosmee-{{.GOSMEE_VERSION}}_linux-x86_64.deb"
+      - sudo dpkg -i "./gosmee-{{.GOSMEE_VERSION}}_linux-x86_64.deb"
+      - sudo rm "./gosmee-{{.GOSMEE_VERSION}}_linux-x86_64.deb"
+
+  install:
+    desc: "Install all dependencies and tools."
+    cmds:
+      - task: install:tekton-cli
+      - task: install:tekton-pac
+      - task: install:gosmee
+
+  k8s:
+    desc: "Install neccessary Kuberentes resources"
+    deps:
+      - minikube:start
+    cmds:
+      - kubectl apply --filename https://infra.tekton.dev/tekton-releases/pipeline/latest/release.yaml
+      - kubectl apply --filename https://infra.tekton.dev/tekton-releases/dashboard/latest/release-full.yaml
+      - kubectl apply -f .tekton/ingress.yaml
+
+  k8s:rbac:
+    desc: "Apply RBAC configuration for Tekton PipelineRun's service account."
+    deps:
+      - create-repo
+    cmds:
+      - kubectl apply -f .tekton/rbac.yaml
+
+  bootstrap:
+    desc: "Use Tekton Pipeline-as-Code to bootstrap this project."
+    run: once
+    deps:
+      - k8s
+    cmds:
+      - tkn pac bootstrap
+
+  create-repo:
+    desc: "Create Tekton Repository CR for this repository."
+    run: once
+    deps:
+      - bootstrap
+    cmds:
+      - tkn pac create repository
+
+  docker-config:
+    desc: "Create a Kuberentes Secret for user's Docker configuration."
+    deps:
+      - create-repo
+    cmds:
+      - kubectl create secret generic docker-config --from-file=config.json="$HOME/.docker/config.json" -n $(k get repository -A -o jsonpath='{.items[0].metadata.namespace}')
+
+  set-concurrency-limit:
+    desc: "Set concurrency limit for Tekton Pipelines."
+    deps:
+      - create-repo
+    cmds:
+      - k patch repositories.pipelinesascode.tekton.dev {{.REPOSITORY_NAME}} -p '{"spec":{"concurrency_limit":2}}' --type 'merge' -n $(k get repository -A -o jsonpath='{.items[0].metadata.namespace}')
+
+  minikube:start:
+    desc: "Start Minikube cluster."
+    run: once
+    cmds:
+      - minikube start --kubernetes-version={{.K8S_VERSION}}
+
+  minikube:load-images:
+    desc: "Load all images into Minikube."
+    deps:
+      - minikube:start
+    cmds:
+      - minikube image load buildpacksio/pack:base docker:latest alpine/k8s:1.33.13 ghcr.io/tektoncd-catalog/git-clone:v1.1.0 alpine/git:latest
+
+  minikube:enable-addons:
+    desc: "Enable addons in Minikube."
+    deps:
+      - minikube:start
+    cmds:
+      - minikube addons enable ingress
+
+  minikube:expose:
+    desc: "Expose ingresses in Minikube via tunnel."
+    deps:
+      - minikube:start
+    cmds:
+      - minikube tunnel
+
+  gosmee:
+    desc: "Create a connection between local Gosmee client and public webhook."
+    cmds:
+      - gosmee client {{.WEBHOOK_ENDPOINT}} http://hook.saritasa.test.com
+
+  k8s:pvc:
+    desc: "Create a predefined PersistentVolumeClaim for hosting source code."
+    deps:
+      - create-repo
+    cmds:
+      - kubectl apply -f .tekton/pvc.yaml
+
+  init:
+    desc: "Initialize the project by installing dependencies."
+    cmds:
+      - task: install
+      - task: k8s
+      - task: minikube:enable-addons
+      - task: minikube:load-images
+      - task: docker-config
+      - task: set-concurrency-limit
+      - task: k8s:rbac
+      - task: k8s:pvc
+      - task: gosmee
+
+
+  minikube:stop:
+    desc: "Stop Minikube cluster."
+    cmds:
+      - minikube stop
