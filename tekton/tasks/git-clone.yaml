@@ -1,0 +1,41 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: git-clone
+spec:
+  description: Clone a git repository and checkout a specific revision. Returns commit SHA.
+  params:
+    - name: url
+      type: string
+      description: Git repository URL
+    - name: revision
+      type: string
+      default: main
+      description: Git revision to checkout
+    - name: subdirectory
+      type: string
+      default: ""
+      description: Optional subdirectory to work in after clone
+  workspaces:
+    - name: source
+      description: Workspace for source code
+  results:
+    - name: commit
+      description: Exact commit SHA checked out
+  steps:
+    - name: clone
+      image: alpine/git:v2.54.0@sha256:113d99116e236f93f0b1f53cd46dbda662cf1136d20dc9ae2834962226654d9f
+      script: |
+        #!/bin/sh
+        set -euo pipefail
+        echo "Starting git clone for $(params.url) at $(params.revision)"
+        rm -rf $(workspaces.source.path)/* $(workspaces.source.path)/.[!.]* $(workspaces.source.path)/..?* 2>/dev/null || true
+        cd $(workspaces.source.path)
+        git clone "$(params.url)" .
+        git checkout "$(params.revision)" || {
+          echo "ERROR: Clone failed for $(params.url)"
+          exit 1
+        }
+        COMMIT=$(git rev-parse HEAD)
+        echo -n "$COMMIT" > $(results.commit.path)
+        echo "SUCCESS: Checked out commit $COMMIT"

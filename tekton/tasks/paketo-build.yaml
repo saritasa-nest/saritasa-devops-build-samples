@@ -1,0 +1,68 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: buildpacks-creator
+spec:
+  description: >-
+    Build and push an image using the Paketo Buildpacks lifecycle 'creator' directly.
+    This task is a more manual approach compared to using 'pack', but allows for finer control
+    over the build process and can be more efficient in certain CI/CD environments.
+  params:
+    - name: IMAGE
+      type: string
+      description: Container image reference to build and push
+    - name: BUILDER_IMAGE
+      type: string
+      default: paketobuildpacks/builder-jammy-full:0.3.622@sha256:25efe93f3afa866e058f1bf6f72b5734dbd270a4b60e344a0df2d613bc19074c
+      description: Container image reference for the builder that contains the lifecycle and buildpacks.
+    - name: COMPONENT_PATH
+      type: string
+      default: "."
+      description: Subdirectory within the workspace where the application resides.
+  workspaces:
+    - name: source
+      description: Workspace with the source code.
+    - name: docker-config
+      description: Non-optional workspace with the config.json for registry authentication.
+    - name: cache
+      description: Persistent volume for build cache.
+      optional: true
+  steps:
+    - name: build-and-push
+      image: $(params.BUILDER_IMAGE)
+      workingDir: $(workspaces.source.path)
+      securityContext:
+        runAsUser: 0
+      script: |
+        #!/usr/bin/env bash
+        set -euo pipefail
+
+        # 1. If the workspace with Docker config is provided, set up the DOCKER_CONFIG environment variable
+        if [ -d "$(workspaces.docker-config.path)" ]; then
+          export DOCKER_CONFIG="/tekton/home/.docker"
+          mkdir -p "$DOCKER_CONFIG"
+          cp "$(workspaces.docker-config.path)/.dockerconfigjson" "$DOCKER_CONFIG/config.json"
+        fi
+
+        # 2. Determinate the application path based on the COMPONENT_PATH parameter
+        APP_PATH="$(workspaces.source.path)/$(params.COMPONENT_PATH)"
+        chmod -R 777 "$(workspaces.source.path)"
+        
+        # 3.  Create layers directory for the build output
+        LAYERS_DIR="/layers"
+        mkdir -p "$LAYERS_DIR"
+
+        # 4. Configure cache flags if cache workspace is bound
+        CACHE_FLAGS=""
+        if [ "$(workspaces.cache.bound)" == "true" ]; then
+          CACHE_FLAGS="-cache-dir=$(workspaces.cache.path)"
+        fi
+
+        echo "-----> Initializing 'creator'..."
+        export CNB_PLATFORM_API=0.10
+        /cnb/lifecycle/creator \
+          -app="$APP_PATH" \
+          -layers="$LAYERS_DIR" \
+          $CACHE_FLAGS \
+          -report="$LAYERS_DIR/report.toml" \
+          "$(params.IMAGE)"

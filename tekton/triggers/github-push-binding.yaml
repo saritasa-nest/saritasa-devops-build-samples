@@ -1,0 +1,13 @@
+apiVersion: triggers.tekton.dev/v1beta1
+kind: TriggerBinding
+metadata:
+  name: github-push-binding
+  namespace: tekton-pipelines
+spec:
+  params:
+    - name: oldSha
+      value: $(body.before)
+    - name: newSha
+      value: $(body.after)
+    - name: gitUrl
+      value: $(body.repository.clone_url)

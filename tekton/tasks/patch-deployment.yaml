@@ -1,0 +1,40 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: patch-deployment
+spec:
+  description: Update deployment image using kubectl patch
+  params:
+    - name: DEPLOYMENT_NAME
+      type: string
+      description: Name of the deployment to patch
+    - name: IMAGE
+      type: string
+      description: New image to set
+    - name: NAMESPACE
+      type: string
+      default: default
+      description: Namespace of the deployment
+  steps:
+    - name: patch
+      image: alpine:3.23
+      script: |
+        #!/bin/sh
+        set -euo pipefail
+        apk add --no-cache kubectl
+
+        echo "Patching deployment $(params.DEPLOYMENT_NAME) with image $(params.IMAGE)"
+        DEPLOYMENT="$(params.DEPLOYMENT_NAME)"
+        NAMESPACE="$(params.NAMESPACE)"
+        IMAGE="$(params.IMAGE)"
+
+        kubectl patch deployment "$DEPLOYMENT" \
+          -n "$NAMESPACE" \
+          --type='strategic' \
+          -p "{\"spec\":{\"template\":{\"spec\":{\"containers\":[{\"name\":\"app\",\"image\":\"$IMAGE\"}]}}}}" || {
+          echo "ERROR: Failed to patch deployment $DEPLOYMENT"
+          echo "Verify deployment exists and image format is valid"
+          exit 1
+        } 
+
+        echo "SUCCESS: Updated deployment $DEPLOYMENT to $IMAGE"

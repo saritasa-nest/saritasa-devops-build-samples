@@ -1,0 +1,40 @@
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  name: test-build-and-deploy-npm
+spec:
+  serviceAccountName: tekton-triggers-sa
+  podTemplate:
+    imagePullSecrets:
+      - name: dockerhub-secret
+  pipelineRef:
+    name: build-and-deploy
+  params:
+    - name: GIT_URL
+      value: https://github.com/saritasa-nest/saritasa-devops-build-samples.git
+    - name: GIT_REVISION
+      value: main
+    - name: COMPONENT_PATH
+      value: nodejs/npm
+    - name: IMAGE
+      value: docker.io/lbcristaldo/nodejs-npm:test
+    - name: DEPLOYMENT_NAME
+      value: nodejs-npm-app
+    - name: NAMESPACE
+      value: default
+    - name: MAX_CONCURRENT
+      value: "2"
+    - name: PIPELINE_NAMESPACE
+      value: tekton-pipelines
+  workspaces:
+    - name: source
+      persistentVolumeClaim:
+        claimName: buildpacks-pvc
+      subPath: source
+    - name: cache
+      persistentVolumeClaim:
+        claimName: buildpacks-pvc
+      subPath: cache
+    - name: docker-config
+      secret:
+        secretName: dockerhub-secret

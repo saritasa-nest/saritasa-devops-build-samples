@@ -1,0 +1,97 @@
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: build-and-deploy
+spec:
+  description: Clone repo, build with Paketo, and deploy to Kubernetes.
+  params:
+    - name: GIT_URL
+      type: string
+      description: Git repository URL to clone.
+    - name: GIT_REVISION
+      type: string
+      default: main
+      description: Git revision to checkout.
+    - name: COMPONENT_PATH
+      type: string
+      default: ""
+      description: Subdirectory path within repo, for example nodejs/npm.
+    - name: IMAGE
+      type: string
+      description: Full image reference to publish, for example docker.io/lbcristaldo/component:sha-abc123.
+    - name: DEPLOYMENT_NAME
+      type: string
+      description: Name of the deployment to update.
+    - name: NAMESPACE
+      type: string
+      default: default
+      description: Target namespace for deployment.
+    - name: MAX_CONCURRENT
+      type: string
+      default: "2"
+      description: Max concurrent component builds.
+    - name: PIPELINE_NAMESPACE
+      type: string
+      default: tekton-pipelines
+      description: Namespace where this PipelineRun is running.
+  workspaces:
+    - name: source
+      description: Shared workspace for source code.
+    - name: docker-config
+      description: Non-optional Docker Hub dockerconfigjson secret.
+    - name: cache
+      description: Optional workspace for buildpacks cache.
+      optional: true
+  tasks:
+    - name: concurrency-check
+      taskRef:
+        name: concurrency-check
+      params:
+        - name: MAX_CONCURRENT
+          value: $(params.MAX_CONCURRENT)
+        - name: NAMESPACE
+          value: $(params.PIPELINE_NAMESPACE)
+    - name: clone
+      taskRef:
+        name: git-clone
+      runAfter:
+        - concurrency-check
+      params:
+        - name: url
+          value: $(params.GIT_URL)
+        - name: revision
+          value: $(params.GIT_REVISION)
+        - name: subdirectory
+          value: $(params.COMPONENT_PATH)
+      workspaces:
+        - name: source
+          workspace: source
+    - name: build
+      taskRef:
+        name: buildpacks-creator
+      runAfter:
+        - clone
+      params:
+        - name: IMAGE
+          value: $(params.IMAGE)
+        - name: COMPONENT_PATH
+          value: $(params.COMPONENT_PATH)
+      workspaces:
+        - name: source
+          workspace: source
+        - name: docker-config
+          workspace: docker-config
+        - name: cache
+          workspace: cache
+    - name: patch
+      taskRef:
+        name: patch-deployment
+      runAfter:
+        - build
+      params:
+        - name: DEPLOYMENT_NAME
+          value: $(params.DEPLOYMENT_NAME)
+        - name: IMAGE
+          value: $(params.IMAGE)
+        - name: NAMESPACE
+          value: $(params.NAMESPACE)

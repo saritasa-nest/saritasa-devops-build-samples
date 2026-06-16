@@ -1,0 +1,42 @@
+apiVersion: triggers.tekton.dev/v1beta1
+kind: TriggerTemplate
+metadata:
+  name: github-push-template
+spec:
+  params:
+    - name: gitUrl
+      description: URL of the Git repository.
+  resourcetemplates:
+    - apiVersion: tekton.dev/v1beta1
+      kind: PipelineRun
+      metadata:
+        generateName: webhook-process-changes-
+        annotations:
+          triggers.tekton.dev/trigger: "github-push"
+      spec:
+        serviceAccountName: tekton-triggers-sa
+        pipelineRef:
+          name: process-changes
+      params:
+        - name: GIT_URL
+          value: $(params.gitUrl)
+        - name: OLD_SHA
+          value: $(body.before)
+        - name: NEW_SHA
+          value: $(body.after)
+        - name: IMAGE_PREFIX
+          value: docker.io/lbcristaldo
+        - name: MAX_CONCURRENT
+          value: "2"
+      workspaces:
+        - name: source
+          persistentVolumeClaim:
+            claimName: buildpacks-pvc
+          subPath: source
+        - name: docker-config
+          secret:
+            secretName: dockerhub-secret
+        - name: cache 
+          persistentVolumeClaim:
+            claimName: buildpacks-pvc
+          subPath: cache

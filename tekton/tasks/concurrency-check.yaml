@@ -1,0 +1,41 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: concurrency-check
+spec:
+  description: Wait until the number of running PipelineRuns is below the configured limit.
+  params:
+    - name: MAX_CONCURRENT
+      type: string
+      default: "2"
+      description: Maximum concurrent PipelineRuns allowed.
+    - name: NAMESPACE
+      type: string
+      default: tekton-pipelines
+      description: Namespace where component PipelineRuns are created.
+  steps:
+    - name: check
+      image: bitnami/kubectl:latest
+      script: |
+        #!/bin/sh
+        set -eu
+
+        MAX_CONCURRENT="$(params.MAX_CONCURRENT)"
+        NAMESPACE="$(params.NAMESPACE)"
+
+        while true; do
+          RUNNING=$(kubectl get pipelineruns -n "$NAMESPACE" -o json 2>/dev/null | \
+            jq '[.items[] | select([.status.conditions[]?.status == "Unknown"] | any)] | length' 2>/dev/null || echo "0")
+
+          if [ -z "$RUNNING" ]; then
+            RUNNING=0
+          fi
+
+          if [ "$RUNNING" -lt "$MAX_CONCURRENT" ]; then
+            echo "Concurrency check passed: $RUNNING/$MAX_CONCURRENT PipelineRuns running in namespace $NAMESPACE"
+            exit 0
+          fi
+
+          echo "Concurrency limit reached ($RUNNING/$MAX_CONCURRENT) in namespace $NAMESPACE; waiting before starting this component build"
+          sleep 10
+        done

@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nodejs-npm-app
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nodejs-npm-app
+  template:
+    metadata:
+      labels:
+        app: nodejs-npm-app
+    spec:
+      containers:
+        - name: app
+          image: node:lts-alpine3.24
+          imagePullPolicy: Always
+          resources:
+            limits:
+              cpu: "500m"
+              memory: "256Mi"
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+          ports:
+            - containerPort: 3000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nodejs-npm-app
+  namespace: default
+spec:
+  selector:
+    app: nodejs-npm-app
+  ports:
+    - port: 80
+      targetPort: 3000

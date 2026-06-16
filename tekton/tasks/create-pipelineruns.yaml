@@ -1,0 +1,116 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: create-pipelineruns
+spec:
+  description: Create one build-and-deploy PipelineRun per modified component.
+  params:
+    - name: COMPONENTS
+      type: string
+      description: Space-separated list of component paths.
+    - name: GIT_URL
+      type: string
+      description: Git repository URL to build.
+    - name: IMAGE_PREFIX
+      type: string
+      default: docker.io/lbcristaldo
+      description: Docker Hub registry prefix for images.
+    - name: GIT_REVISION
+      type: string
+      default: main
+      description: Git revision for builds.
+    - name: NAMESPACE
+      type: string
+      default: tekton-pipelines
+      description: Namespace where component PipelineRuns are created.
+    - name: SERVICE_ACCOUNT_NAME
+      type: string
+      default: tekton-triggers-sa
+      description: ServiceAccount used by component PipelineRuns.
+    - name: MAX_CONCURRENT
+      type: string
+      default: "2"
+      description: Maximum concurrent component builds.
+    - name: PIPELINE_NAMESPACE
+      type: string
+      default: tekton-pipelines
+      description: Namespace used by component PipelineRuns for concurrency checks.
+  steps:
+    - name: create-pipelineruns
+      image: bitnami/kubectl:latest
+      script: |
+        #!/bin/sh
+        set -eu
+
+        COMPONENTS="$(params.COMPONENTS)"
+        GIT_URL="$(params.GIT_URL)"
+        IMAGE_PREFIX="$(params.IMAGE_PREFIX)"
+        GIT_REVISION="$(params.GIT_REVISION)"
+        NAMESPACE="$(params.NAMESPACE)"
+        SERVICE_ACCOUNT_NAME="$(params.SERVICE_ACCOUNT_NAME)"
+        MAX_CONCURRENT="$(params.MAX_CONCURRENT)"
+        PIPELINE_NAMESPACE="$(params.PIPELINE_NAMESPACE)"
+
+        if [ -z "$GIT_URL" ]; then
+          echo "ERROR: GIT_URL is required"
+          exit 1
+        fi
+
+        if [ "$COMPONENTS" = "no-op" ] || [ -z "$COMPONENTS" ]; then
+          echo "No buildpack-ready components to build; skipping child PipelineRuns"
+          exit 0
+        fi
+
+        TIMESTAMP=$(date +%s)
+
+        for component in $COMPONENTS; do
+          COMPONENT_NAME=$(printf '%s' "$component" | tr '/' '-')
+          IMAGE="${IMAGE_PREFIX}/${COMPONENT_NAME}:${GIT_REVISION}"
+          DEPLOYMENT="${COMPONENT_NAME}-app"
+
+          echo "Creating one PipelineRun for component $component -> $IMAGE -> $NAMESPACE/$DEPLOYMENT"
+
+          cat <<EOF | kubectl apply -n "$NAMESPACE" -f -
+            apiVersion: tekton.dev/v1beta1
+            kind: PipelineRun
+            metadata:
+              generateName: build-${COMPONENT_NAME}-
+            spec:
+              serviceAccountName: ${SERVICE_ACCOUNT_NAME}
+              pipelineRef:
+                name: build-and-deploy
+              params:
+                - name: GIT_URL
+                  value: "${GIT_URL}"
+                - name: GIT_REVISION
+                  value: "${GIT_REVISION}"
+                - name: COMPONENT_PATH
+                  value: "${component}"
+                - name: IMAGE
+                  value: "${IMAGE}"
+                - name: DEPLOYMENT_NAME
+                  value: "${DEPLOYMENT}"
+                - name: NAMESPACE
+                  value: "${NAMESPACE}"
+                - name: MAX_CONCURRENT
+                  value: "${MAX_CONCURRENT}"
+                - name: PIPELINE_NAMESPACE
+                  value: "${PIPELINE_NAMESPACE}"
+              workspaces:
+                - name: source
+                  persistentvolumeClaim:
+                    claimName: buildpacks-pvc
+                  subPath: source
+                - name: docker-config
+                  secret:
+                    secretName: dockerhub-secret
+                - name: cache 
+                  persistentVolumeClaim:
+                    claimName: buildpacks-pvc
+                  subPath: cache
+            EOF
+
+          echo "PipelineRun for $component created"
+        done
+
+        echo "SUCCESS: Created one PipelineRun per modified component with max concurrency $MAX_CONCURRENT"
