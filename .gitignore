@@ -3,3 +3,8 @@
 .vscode
 vendor
 .dccache
+cicd/secrets.env
+cicd/.ngrok-url
+cicd/.ngrok.pid
+cicd/.port-forward.pid
+cicd/k8s/apps/generated/

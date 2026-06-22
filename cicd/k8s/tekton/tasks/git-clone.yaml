@@ -1,0 +1,42 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: git-clone
+  namespace: cicd
+  labels:
+    app.kubernetes.io/part-of: saritasa-cicd
+spec:
+  description: Clone a git repository at a specific revision
+  params:
+    - name: url
+      type: string
+    - name: revision
+      type: string
+    - name: subdirectory
+      type: string
+      default: ""
+  workspaces:
+    - name: output
+      description: Workspace to clone into
+  steps:
+    - name: clone
+      image: alpine/git:2.45.2
+      script: |
+        #!/usr/bin/env sh
+        set -eu
+        cd "$(workspaces.output.path)"
+        rm -rf .git source 2>/dev/null || true
+        git clone "$(params.url)" source
+        cd source
+        git checkout "$(params.revision)"
+        echo "Cloned $(params.url)@$(params.revision)"
+        if [ -n "$(params.subdirectory)" ]; then
+          test -d "$(params.subdirectory)" || { echo "ERROR: subdirectory $(params.subdirectory) not found"; exit 1; }
+        fi
+      computeResources:
+        requests:
+          memory: 256Mi
+          cpu: 100m
+        limits:
+          memory: 512Mi
+          cpu: 500m

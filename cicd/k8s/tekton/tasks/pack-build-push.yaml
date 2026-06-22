@@ -1,0 +1,77 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: pack-build-push
+  namespace: cicd
+  labels:
+    app.kubernetes.io/part-of: saritasa-cicd
+spec:
+  description: Build and publish an OCI image using Paketo buildpacks via pack CLI
+  params:
+    - name: component-path
+      type: string
+    - name: image
+      type: string
+    - name: builder
+      type: string
+    - name: buildpack
+      type: string
+      default: ""
+    - name: build-env
+      type: string
+      default: ""
+      description: "Comma-separated KEY=VALUE pairs for pack --env"
+  workspaces:
+    - name: source
+    - name: dockerconfig
+  steps:
+    - name: build-and-push
+      image: buildpacksio/pack:0.35.1
+      env:
+        - name: HOME
+          value: /tekton/home
+      script: |
+        #!/usr/bin/env bash
+        set -euo pipefail
+
+        mkdir -p /tekton/home/.docker
+        cp "$(workspaces.dockerconfig.path)/.dockerconfigjson" /tekton/home/.docker/config.json
+
+        SOURCE_ROOT="$(workspaces.source.path)/source"
+        APP_PATH="${SOURCE_ROOT}/$(params.component-path)"
+
+        if [ ! -d "${APP_PATH}" ]; then
+          echo "ERROR: component path not found: ${APP_PATH}"
+          exit 1
+        fi
+
+        PACK_ARGS=(
+          build "$(params.image)"
+          --path "${APP_PATH}"
+          --builder "$(params.builder)"
+          --publish
+          --trust-builder
+          --verbose
+        )
+
+        if [ -n "$(params.buildpack)" ]; then
+          PACK_ARGS+=(--buildpack "$(params.buildpack)")
+        fi
+
+        if [ -n "$(params.build-env)" ]; then
+          IFS=',' read -ra ENVS <<< "$(params.build-env)"
+          for env_pair in "${ENVS[@]}"; do
+            PACK_ARGS+=(--env "${env_pair}")
+          done
+        fi
+
+        echo "Running: pack ${PACK_ARGS[*]}"
+        pack "${PACK_ARGS[@]}"
+        echo "SUCCESS: pushed $(params.image)"
+      computeResources:
+        requests:
+          memory: 2Gi
+          cpu: "1"
+        limits:
+          memory: 4Gi
+          cpu: "2"

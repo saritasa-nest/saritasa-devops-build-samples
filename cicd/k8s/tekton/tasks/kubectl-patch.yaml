@@ -1,0 +1,50 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: kubectl-patch
+  namespace: cicd
+  labels:
+    app.kubernetes.io/part-of: saritasa-cicd
+spec:
+  description: Patch a Deployment container image and wait for rollout
+  params:
+    - name: deployment
+      type: string
+    - name: image
+      type: string
+    - name: namespace
+      type: string
+      default: cicd
+    - name: container
+      type: string
+      default: app
+    - name: timeout
+      type: string
+      default: "300s"
+  steps:
+    - name: patch
+      image: bitnami/kubectl:1.30.2
+      script: |
+        #!/usr/bin/env bash
+        set -euo pipefail
+
+        echo "Patching deployment/$(params.deployment) container $(params.container) -> $(params.image)"
+        kubectl patch deployment "$(params.deployment)" \
+          -n "$(params.namespace)" \
+          --type='json' \
+          -p="[{\"op\": \"replace\", \"path\": \"/spec/template/spec/containers/0/image\", \"value\": \"$(params.image)\"}]"
+
+        echo "Waiting for rollout..."
+        if ! kubectl rollout status deployment/"$(params.deployment)" \
+          -n "$(params.namespace)" \
+          --timeout="$(params.timeout)"; then
+          echo "ERROR: rollout failed for $(params.deployment)"
+          kubectl get pods -n "$(params.namespace)" -l "app.kubernetes.io/component=$(params.deployment)" || true
+          kubectl logs -n "$(params.namespace)" -l "app.kubernetes.io/component=$(params.deployment)" --tail=50 || true
+          exit 1
+        fi
+        echo "SUCCESS: $(params.deployment) rolled out with $(params.image)"
+      computeResources:
+        requests:
+          memory: 128Mi
+          cpu: 100m

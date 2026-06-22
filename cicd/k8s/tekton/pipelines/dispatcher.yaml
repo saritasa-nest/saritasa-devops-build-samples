@@ -1,0 +1,49 @@
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: dispatcher
+  namespace: cicd
+  labels:
+    app.kubernetes.io/part-of: saritasa-cicd
+spec:
+  description: Detect changed components from webhook and fan-out to build-deploy PipelineRuns
+  params:
+    - name: git-url
+      type: string
+    - name: git-revision
+      type: string
+    - name: changed-files
+      type: string
+  workspaces:
+    - name: components
+  tasks:
+    - name: detect-and-dispatch
+      taskRef:
+        name: detect-and-dispatch
+      params:
+        - name: git-url
+          value: $(params.git-url)
+        - name: git-revision
+          value: $(params.git-revision)
+        - name: changed-files
+          value: $(params.changed-files)
+      workspaces:
+        - name: components
+          workspace: components
+
+  finally:
+    - name: notify-dispatcher
+      taskRef:
+        name: notify
+      params:
+        - name: stage
+          value: dispatcher
+        - name: status
+          value: $(tasks.detect-and-dispatch.status)
+        - name: git-revision
+          value: $(params.git-revision)
+        - name: message
+          value: "Dispatcher finished for revision $(params.git-revision)"
+
+  timeouts:
+    pipeline: 60m

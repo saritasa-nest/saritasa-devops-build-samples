@@ -1,0 +1,193 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: detect-and-dispatch
+  namespace: cicd
+  labels:
+    app.kubernetes.io/part-of: saritasa-cicd
+spec:
+  description: Detect changed components and create build-deploy PipelineRuns with concurrency control
+  params:
+    - name: git-url
+      type: string
+    - name: git-revision
+      type: string
+    - name: changed-files
+      type: string
+      description: JSON array of changed file paths
+  workspaces:
+    - name: components
+      description: components.yaml mounted from ConfigMap
+  steps:
+    - name: dispatch
+      image: python:3.12-slim
+      env:
+        - name: MAX_CONCURRENT
+          valueFrom:
+            configMapKeyRef:
+              name: cicd-config
+              key: MAX_CONCURRENT_BUILDS
+        - name: REGISTRY
+          valueFrom:
+            configMapKeyRef:
+              name: cicd-config
+              key: REGISTRY
+        - name: GITHUB_USER
+          valueFrom:
+            configMapKeyRef:
+              name: cicd-config
+              key: GITHUB_USER
+      script: |
+        #!/usr/bin/env bash
+        set -euo pipefail
+
+        apt-get update -qq && apt-get install -qq -y curl >/dev/null
+        pip install -q pyyaml >/dev/null
+        curl -sLO "https://dl.k8s.io/release/v1.30.2/bin/linux/amd64/kubectl"
+        chmod +x kubectl && mv kubectl /usr/local/bin/
+
+        python3 << 'PYSCRIPT'
+        import json, os, sys, time, yaml, subprocess
+
+        git_url = "$(params.git-url)"
+        git_revision = "$(params.git-revision)"
+        raw_changed = '''$(params.changed-files)'''.strip()
+        try:
+            changed_files = json.loads(raw_changed)
+        except json.JSONDecodeError:
+            import re
+            changed_files = re.findall(r'"([^"]+)"', raw_changed)
+            if not changed_files:
+                changed_files = [f.strip() for f in raw_changed.strip("[]").split(",") if f.strip()]
+        max_concurrent = int(os.environ.get("MAX_CONCURRENT", "2"))
+        registry = os.environ["REGISTRY"]
+        github_user = os.environ["GITHUB_USER"]
+        namespace = "cicd"
+
+        components_path = "$(workspaces.components.path)/components.yaml"
+        with open(components_path) as f:
+            components = yaml.safe_load(f)["components"]
+
+        # Longest-prefix match for changed files
+        paths = sorted(components, key=lambda c: len(c["path"]), reverse=True)
+        matched = {}
+        for filepath in changed_files:
+            filepath = filepath.lstrip("./")
+            for comp in paths:
+                p = comp["path"]
+                if filepath == p or filepath.startswith(p + "/"):
+                    matched[comp["id"]] = comp
+                    break
+
+        if not matched:
+            print("NOOP: No buildpack-ready components changed")
+            print(json.dumps({"status": "noop", "changed_files": changed_files}))
+            sys.exit(0)
+
+        print(f"Matched {len(matched)} component(s): {list(matched.keys())}")
+
+        def running_build_count():
+            result = subprocess.run(
+                [
+                    "kubectl", "get", "pipelinerun", "-n", namespace,
+                    "-l", "tekton.dev/pipeline=build-deploy-component",
+                    "-o", "json",
+                ],
+                capture_output=True, text=True,
+            )
+            if result.returncode != 0:
+                return 0
+            data = json.loads(result.stdout)
+            count = 0
+            for item in data.get("items", []):
+                conditions = item.get("status", {}).get("conditions", [])
+                done = any(c.get("type") == "Succeeded" and c.get("status") == "True" for c in conditions)
+                failed = any(c.get("type") == "Succeeded" and c.get("status") == "False" for c in conditions)
+                if not done and not failed:
+                    count += 1
+            return count
+
+        def wait_for_slot():
+            while running_build_count() >= max_concurrent:
+                running = running_build_count()
+                print(f"QUEUE: {running}/{max_concurrent} builds running, waiting...")
+                time.sleep(15)
+
+        def build_env_string(comp):
+            env = comp.get("build_env", {})
+            if not env:
+                return ""
+            return ",".join(f"{k}={v}" for k, v in env.items())
+
+        short_sha = git_revision[:7]
+        created = []
+        queued = list(matched.values())
+
+        for comp in queued:
+            wait_for_slot()
+            cid = comp["id"]
+            image = f"{registry}/{github_user}/{cid}:{short_sha}"
+            build_env = build_env_string(comp)
+
+            pipelinerun = {
+                "apiVersion": "tekton.dev/v1",
+                "kind": "PipelineRun",
+                "metadata": {
+                    "generateName": f"build-{cid}-",
+                    "namespace": namespace,
+                    "labels": {
+                        "tekton.dev/pipeline": "build-deploy-component",
+                        "app.kubernetes.io/component": cid,
+                        "cicd.git/revision": short_sha,
+                    },
+                },
+                "spec": {
+                    "serviceAccountName": "pipeline-sa",
+                    "pipelineRef": {"name": "build-deploy-component"},
+                    "params": [
+                        {"name": "git-url", "value": git_url},
+                        {"name": "git-revision", "value": git_revision},
+                        {"name": "component-id", "value": cid},
+                        {"name": "component-path", "value": comp["path"]},
+                        {"name": "builder", "value": comp["builder"]},
+                        {"name": "buildpack", "value": comp.get("buildpack", "")},
+                        {"name": "build-env", "value": build_env},
+                        {"name": "image", "value": image},
+                        {"name": "deployment", "value": cid},
+                    ],
+                    "workspaces": [
+                        {"name": "shared-source", "volumeClaimTemplate": {
+                            "spec": {
+                                "accessModes": ["ReadWriteOnce"],
+                                "resources": {"requests": {"storage": "2Gi"}},
+                            }
+                        }},
+                        {"name": "docker-credentials", "secret": {"secretName": "ghcr-credentials"}},
+                    ],
+                    "timeouts": {"pipeline": "30m"},
+                },
+            }
+
+            proc = subprocess.run(
+                ["kubectl", "create", "-f", "-"],
+                input=yaml.dump(pipelinerun),
+                capture_output=True, text=True,
+            )
+            if proc.returncode != 0:
+                print(f"ERROR: failed to create PipelineRun for {cid}: {proc.stderr}")
+                sys.exit(1)
+            print(f"STARTED: PipelineRun for {cid} -> {image}")
+            created.append(cid)
+            time.sleep(2)
+
+        print(json.dumps({
+            "status": "dispatched",
+            "components": created,
+            "total": len(created),
+            "git_revision": git_revision,
+        }))
+        PYSCRIPT
+      computeResources:
+        requests:
+          memory: 256Mi
+          cpu: 200m

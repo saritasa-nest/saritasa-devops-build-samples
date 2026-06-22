@@ -2,6 +2,10 @@
 
 A collection of sample applications that can be built using Paketo Buildpacks.
 
+## CI/CD (Tekton + Paketo)
+
+This fork includes a Tekton-based CI/CD solution under [`cicd/`](cicd/). See [cicd/docs/SETUP.md](cicd/docs/SETUP.md) to provision on minikube.
+
 ## Prerequisites
 
 1. Clone this repository: `git clone https://github.com/paketo-buildpacks/samples`

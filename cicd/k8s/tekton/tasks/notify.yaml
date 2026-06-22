@@ -1,0 +1,44 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: notify
+  namespace: cicd
+  labels:
+    app.kubernetes.io/part-of: saritasa-cicd
+spec:
+  description: Print structured notification to stdout
+  params:
+    - name: component-id
+      type: string
+      default: ""
+    - name: stage
+      type: string
+    - name: status
+      type: string
+    - name: image
+      type: string
+      default: ""
+    - name: message
+      type: string
+      default: ""
+    - name: git-revision
+      type: string
+      default: ""
+  steps:
+    - name: notify
+      image: alpine:3.20
+      script: |
+        #!/usr/bin/env sh
+        set -eu
+        cat <<EOF
+        ========================================
+        CICD NOTIFICATION
+        ========================================
+        component:  $(params.component-id)
+        stage:      $(params.stage)
+        status:     $(params.status)
+        image:      $(params.image)
+        revision:   $(params.git-revision)
+        message:    $(params.message)
+        ========================================
+        EOF

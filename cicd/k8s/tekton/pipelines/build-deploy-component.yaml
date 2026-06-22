@@ -1,0 +1,99 @@
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: build-deploy-component
+  namespace: cicd
+  labels:
+    app.kubernetes.io/part-of: saritasa-cicd
+spec:
+  description: Clone, build with Paketo, push to GHCR, and patch Deployment for one component
+  params:
+    - name: git-url
+      type: string
+    - name: git-revision
+      type: string
+    - name: component-id
+      type: string
+    - name: component-path
+      type: string
+    - name: builder
+      type: string
+    - name: buildpack
+      type: string
+      default: ""
+    - name: build-env
+      type: string
+      default: ""
+    - name: image
+      type: string
+    - name: deployment
+      type: string
+  workspaces:
+    - name: shared-source
+    - name: docker-credentials
+  tasks:
+    - name: clone
+      taskRef:
+        name: git-clone
+      params:
+        - name: url
+          value: $(params.git-url)
+        - name: revision
+          value: $(params.git-revision)
+        - name: subdirectory
+          value: $(params.component-path)
+      workspaces:
+        - name: output
+          workspace: shared-source
+
+    - name: build-push
+      runAfter: [clone]
+      taskRef:
+        name: pack-build-push
+      params:
+        - name: component-path
+          value: $(params.component-path)
+        - name: image
+          value: $(params.image)
+        - name: builder
+          value: $(params.builder)
+        - name: buildpack
+          value: $(params.buildpack)
+        - name: build-env
+          value: $(params.build-env)
+      workspaces:
+        - name: source
+          workspace: shared-source
+        - name: dockerconfig
+          workspace: docker-credentials
+
+    - name: deploy
+      runAfter: [build-push]
+      taskRef:
+        name: kubectl-patch
+      params:
+        - name: deployment
+          value: $(params.deployment)
+        - name: image
+          value: $(params.image)
+
+  finally:
+    - name: notify-result
+      taskRef:
+        name: notify
+      params:
+        - name: component-id
+          value: $(params.component-id)
+        - name: stage
+          value: build-deploy-component
+        - name: status
+          value: $(tasks.build-push.status)
+        - name: image
+          value: $(params.image)
+        - name: git-revision
+          value: $(params.git-revision)
+        - name: message
+          value: "clone=$(tasks.clone.status) build=$(tasks.build-push.status) deploy=$(tasks.deploy.status)"
+
+  timeouts:
+    pipeline: 30m

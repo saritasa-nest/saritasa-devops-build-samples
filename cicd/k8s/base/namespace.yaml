@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ${CICD_NAMESPACE}
+  labels:
+    app.kubernetes.io/part-of: saritasa-cicd
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cicd-config
+  namespace: ${CICD_NAMESPACE}
+data:
+  MAX_CONCURRENT_BUILDS: "${MAX_CONCURRENT_BUILDS}"
+  REGISTRY: "${REGISTRY}"
+  GITHUB_USER: "${GITHUB_USER}"
