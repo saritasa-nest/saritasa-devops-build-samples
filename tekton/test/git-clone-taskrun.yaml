@@ -1,0 +1,41 @@
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  name: git-clone-test
+  namespace: tekton
+spec:
+  taskRef:
+    name: git-clone
+  params:
+    - name: url
+      value: git@github.com:dknhat2000/saritasa-devops-build-samples.git
+    - name: revision
+      value: 48097e2cd32d34b66e06bc26d362defe418b33ed
+    - name: submodules
+      value: "false"
+    - name: depth
+      value: "0"
+    - name: verbose
+      value: "true"
+  workspaces:
+    - name: output
+      persistentVolumeClaim:
+        claimName: git-clone-test-pvc
+    - name: ssh-directory
+      secret:
+        secretName: git-credentials
+  podTemplate:
+    securityContext:
+      fsGroup: 65532
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: git-clone-test-pvc
+  namespace: tekton
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi

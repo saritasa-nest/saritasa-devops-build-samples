@@ -1,0 +1,70 @@
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: clone-build-test
+  namespace: tekton
+spec:
+  description: Clone fork at commit SHA, then build go-no-imports with Paketo buildpacks.
+  params:
+    - name: repo-url
+      type: string
+    - name: commit-sha
+      type: string
+    - name: source-subpath
+      type: string
+      default: go/no-imports
+    - name: builder-image
+      type: string
+      default: paketobuildpacks/builder-jammy-base
+    - name: app-image
+      type: string
+    - name: build-env
+      type: array
+      default:
+        - BP_GO_TARGETS=.
+  workspaces:
+    - name: source
+    - name: git-credentials
+    - name: dockerconfig
+  tasks:
+    - name: clone
+      taskRef:
+        name: git-clone
+      workspaces:
+        - name: output
+          workspace: source
+        - name: ssh-directory
+          workspace: git-credentials
+      params:
+        - name: url
+          value: $(params.repo-url)
+        - name: revision
+          value: $(params.commit-sha)
+        - name: submodules
+          value: "false"
+        - name: depth
+          value: "0"
+    - name: build
+      runAfter: ["clone"]
+      taskRef:
+        name: pack-build-push
+      workspaces:
+        - name: source
+          workspace: source
+        - name: dockerconfig
+          workspace: dockerconfig
+      params:
+        - name: APP_IMAGE
+          value: $(params.app-image)
+        - name: BUILDER_IMAGE
+          value: $(params.builder-image)
+        - name: SOURCE_SUBPATH
+          value: $(params.source-subpath)
+        - name: ENV_VARS
+          value: $(params.build-env[*])
+        - name: PROCESS_TYPE
+          value: workspace
+        - name: USER_ID
+          value: "0"
+        - name: GROUP_ID
+          value: "0"

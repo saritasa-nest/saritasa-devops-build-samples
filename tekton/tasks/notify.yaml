@@ -1,0 +1,53 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: notify
+  labels:
+    app.kubernetes.io/part-of: saritasa-cicd
+  annotations:
+    saritasa.dev/source: custom
+spec:
+  description: >-
+    Prints a structured success or failure notification to stdout.
+    Intended for use in a Pipeline finally block.
+  params:
+    - name: component-id
+      type: string
+      description: Component slug (e.g. go-no-imports)
+    - name: status
+      type: string
+      description: Pipeline or TaskRun status (Succeeded, Failed, etc.)
+    - name: image-ref
+      type: string
+      description: Built and deployed image reference
+      default: ""
+    - name: commit-sha
+      type: string
+      description: Git commit SHA that triggered the build
+      default: ""
+    - name: message
+      type: string
+      description: Optional extra detail (error text, NOOP reason, etc.)
+      default: ""
+  steps:
+    - name: notify
+      image: docker.io/library/busybox:1.36
+      script: |
+        #!/bin/sh
+        set -eu
+        ts="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+        echo "=========================================="
+        echo "CICD NOTIFICATION"
+        echo "timestamp: ${ts}"
+        echo "status: $(params.status)"
+        echo "component: $(params.component-id)"
+        if [ -n "$(params.image-ref)" ]; then
+          echo "image: $(params.image-ref)"
+        fi
+        if [ -n "$(params.commit-sha)" ]; then
+          echo "commit: $(params.commit-sha)"
+        fi
+        if [ -n "$(params.message)" ]; then
+          echo "message: $(params.message)"
+        fi
+        echo "=========================================="
