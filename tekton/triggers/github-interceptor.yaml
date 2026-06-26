@@ -1,0 +1,45 @@
+apiVersion: triggers.tekton.dev/v1beta1
+kind: Trigger
+metadata:
+  name: github-webhook
+  namespace: tekton
+  labels:
+    app.kubernetes.io/part-of: saritasa-cicd
+spec:
+  interceptors:
+    - ref:
+        name: github
+        kind: ClusterInterceptor
+        apiVersion: triggers.tekton.dev
+      params:
+        - name: secretRef
+          value:
+            secretName: github-webhook-secret
+            secretKey: secretToken
+        - name: eventTypes
+          value:
+            - push
+            - pull_request
+        - name: addChangedFiles
+          value:
+            enabled: true
+    - ref:
+        name: cel
+        kind: ClusterInterceptor
+        apiVersion: triggers.tekton.dev
+      params:
+        - name: filter
+          value: >-
+            header.match('X-GitHub-Event', 'push') ||
+            (header.match('X-GitHub-Event', 'pull_request') &&
+            (body.action == 'opened' || body.action == 'synchronize' || body.action == 'reopened'))
+        - name: overlays
+          value:
+            - key: changed_files
+              expression: extensions.changed_files.replace(',', ' ')
+            - key: commit_sha
+              expression: "body.after != '' ? body.after : body.pull_request.head.sha"
+  bindings:
+    - ref: github-webhook-binding
+  template:
+    ref: github-webhook-template

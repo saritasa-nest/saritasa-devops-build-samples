@@ -1,0 +1,17 @@
+apiVersion: triggers.tekton.dev/v1beta1
+kind: TriggerBinding
+metadata:
+  name: github-webhook-binding
+  namespace: tekton
+  labels:
+    app.kubernetes.io/part-of: saritasa-cicd
+spec:
+  params:
+    - name: commit-sha
+      value: $(extensions.commit_sha)
+    - name: repo-url
+      value: $(body.repository.ssh_url)
+    - name: repo-name
+      value: $(body.repository.name)
+    - name: changed-files
+      value: $(extensions.changed_files)

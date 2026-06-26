@@ -1,0 +1,35 @@
+apiVersion: triggers.tekton.dev/v1beta1
+kind: TriggerTemplate
+metadata:
+  name: github-webhook-template
+  namespace: tekton
+  labels:
+    app.kubernetes.io/part-of: saritasa-cicd
+spec:
+  params:
+    - name: commit-sha
+    - name: changed-files
+    - name: repo-url
+    - name: repo-name
+  resourcetemplates:
+    - apiVersion: tekton.dev/v1beta1
+      kind: PipelineRun
+      metadata:
+        generateName: dispatcher-$(uid)
+        namespace: tekton
+        labels:
+          app.kubernetes.io/part-of: saritasa-cicd
+          saritasa.dev/triggered-by: github-webhook
+      spec:
+        serviceAccountName: dispatcher-sa
+        pipelineRef:
+          name: dispatcher
+        params:
+          - name: commit-sha
+            value: $(tt.params.commit-sha)
+          - name: changed-files
+            value: $(tt.params.changed-files)
+          - name: repo-url
+            value: $(tt.params.repo-url)
+          - name: repo-name
+            value: $(tt.params.repo-name)

@@ -1,0 +1,33 @@
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  name: detect-and-dispatch-noop-test
+  namespace: tekton
+spec:
+  serviceAccountName: dispatcher-sa
+  taskRef:
+    name: detect-and-dispatch
+  params:
+    - name: commit-sha
+      value: 48097e2cd32d34b66e06bc26d362defe418b33ed
+    - name: changed-files
+      value: README.md .github/workflows/ci.yml
+    - name: repo-url
+      value: git@github.com:dknhat2000/saritasa-devops-build-samples.git
+    - name: github-user
+      value: dknhat2000
+    - name: components-yaml
+      value: |
+        components:
+          - id: go-no-imports
+            path: go/no-imports
+            builder: paketobuildpacks/builder-jammy-base
+            build_env:
+              - BP_GO_TARGETS=.
+            port: 8080
+          - id: go-mod
+            path: go/mod
+            builder: paketobuildpacks/builder-jammy-base
+            build_env:
+              - BP_GO_TARGETS=.
+            port: 8080

@@ -71,7 +71,22 @@ kubectl create secret generic git-credentials -n tekton \
   --from-file=config="${tmpdir}/config" \
   --dry-run=client -o yaml | kubectl apply -f -
 
+if [[ -d "${TEKTON_DIR}/config" ]]; then
+  log "Applying config"
+  kubectl apply -f "${TEKTON_DIR}/config/"
+fi
+
 log "Applying tasks"
 kubectl apply -n tekton -f "${TEKTON_DIR}/tasks/"
+
+if [[ -d "${TEKTON_DIR}/triggers" ]]; then
+  log "Applying triggers"
+  kubectl apply -n tekton -f "${TEKTON_DIR}/triggers/"
+fi
+
+if command -v ngrok >/dev/null 2>&1; then
+  log "Linking ngrok webhook (optional)"
+  python3 "${TEKTON_DIR}/scripts/ngrok-webhook.py" || log "ngrok webhook skipped (see manual steps in script output)"
+fi
 
 log "Done"

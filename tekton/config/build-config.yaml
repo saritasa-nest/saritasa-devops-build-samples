@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: build-config
+  namespace: tekton
+  labels:
+    app.kubernetes.io/part-of: saritasa-cicd
+data:
+  MAX_CONCURRENT_BUILDS: "2"
