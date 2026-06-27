@@ -2,21 +2,23 @@ apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
   name: notify
+  namespace: tekton
   labels:
     app.kubernetes.io/part-of: saritasa-cicd
   annotations:
     saritasa.dev/source: custom
 spec:
   description: >-
-    Prints a structured success or failure notification to stdout.
-    Intended for use in a Pipeline finally block.
+    Print a build notification to stdout and post a GitHub commit status on
+    the triggering SHA. Logic lives in tekton/scripts/notify.py (executed from
+    the shared source workspace). Always runs via the pipeline finally block.
   params:
     - name: component-id
       type: string
       description: Component slug (e.g. go-no-imports)
     - name: status
       type: string
-      description: Pipeline or TaskRun status (Succeeded, Failed, etc.)
+      description: Tekton aggregate-status (Succeeded, Failed, Completed, None)
     - name: image-ref
       type: string
       description: Built and deployed image reference
@@ -29,25 +31,32 @@ spec:
       type: string
       description: Optional extra detail (error text, NOOP reason, etc.)
       default: ""
+  workspaces:
+    - name: source
+      description: Shared pipeline workspace containing the cloned repo and scripts
   steps:
     - name: notify
-      image: docker.io/library/busybox:1.36
-      script: |
-        #!/bin/sh
-        set -eu
-        ts="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-        echo "=========================================="
-        echo "CICD NOTIFICATION"
-        echo "timestamp: ${ts}"
-        echo "status: $(params.status)"
-        echo "component: $(params.component-id)"
-        if [ -n "$(params.image-ref)" ]; then
-          echo "image: $(params.image-ref)"
-        fi
-        if [ -n "$(params.commit-sha)" ]; then
-          echo "commit: $(params.commit-sha)"
-        fi
-        if [ -n "$(params.message)" ]; then
-          echo "message: $(params.message)"
-        fi
-        echo "=========================================="
+      image: python:3.12-slim-bookworm
+      env:
+        - name: COMPONENT_ID
+          value: $(params.component-id)
+        - name: STATUS
+          value: $(params.status)
+        - name: IMAGE_REF
+          value: $(params.image-ref)
+        - name: COMMIT_SHA
+          value: $(params.commit-sha)
+        - name: MESSAGE
+          value: $(params.message)
+        # GitHub PAT with repo:status scope for posting commit statuses on PRs
+        - name: GITHUB_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: github-token
+              key: token
+        - name: GITHUB_REPO
+          valueFrom:
+            configMapKeyRef:
+              name: build-config
+              key: GITHUB_REPO
+      script: exec python3 $(workspaces.source.path)/tekton/scripts/notify.py

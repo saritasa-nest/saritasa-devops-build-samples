@@ -7,3 +7,6 @@ metadata:
     app.kubernetes.io/part-of: saritasa-cicd
 data:
   MAX_CONCURRENT_BUILDS: "2"
+  GITHUB_USER: "dknhat2000"
+  GITHUB_REPO: "dknhat2000/saritasa-devops-build-samples"
+  DEPLOY_NAMESPACE: "dev"

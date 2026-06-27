@@ -24,6 +24,10 @@ spec:
         serviceAccountName: dispatcher-sa
         pipelineRef:
           name: dispatcher
+        workspaces:
+          - name: components
+            configMap:
+              name: components-config
         params:
           - name: commit-sha
             value: $(tt.params.commit-sha)

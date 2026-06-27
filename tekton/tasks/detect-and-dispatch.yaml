@@ -26,9 +26,6 @@ spec:
     - name: repo-url
       type: string
       description: SSH or HTTPS clone URL for the repository
-    - name: github-user
-      type: string
-      description: GHCR namespace for image refs (from secrets.env GITHUB_USER)
     - name: components-yaml
       type: string
       description: Full components.yaml content (used when components workspace is not bound)
@@ -43,8 +40,12 @@ spec:
           value: $(params.changed-files)
         - name: REPO_URL
           value: $(params.repo-url)
+        # Used to construct the GHCR image ref: ghcr.io/<GITHUB_USER>/<component-id>:<sha>
         - name: GITHUB_USER
-          value: $(params.github-user)
+          valueFrom:
+            configMapKeyRef:
+              name: build-config
+              key: GITHUB_USER
         - name: COMPONENTS_YAML
           value: $(params.components-yaml)
       script: |
