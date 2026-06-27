@@ -1,0 +1,243 @@
+# Pre-created placeholder Deployments and Services for each buildpack component.
+# The pipeline patches the image field once a build succeeds.
+#
+# imagePullSecrets references ghcr-credentials by name — swap the secret content
+# to point to a different private registry without touching these manifests.
+#
+# Container names follow the component-id convention so future patch-by-name
+# strategies remain consistent across all components.
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: go-no-imports
+  namespace: dev
+  labels:
+    app: go-no-imports
+    app.kubernetes.io/part-of: saritasa-cicd
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: go-no-imports
+  template:
+    metadata:
+      labels:
+        app: go-no-imports
+    spec:
+      imagePullSecrets:
+        - name: ghcr-credentials
+      containers:
+        - name: go-no-imports
+          image: busybox:1.36
+          args: ["sleep", "infinity"]
+          ports:
+            - containerPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: go-no-imports
+  namespace: dev
+spec:
+  selector:
+    app: go-no-imports
+  ports:
+    - port: 8080
+      targetPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: go-mod
+  namespace: dev
+  labels:
+    app: go-mod
+    app.kubernetes.io/part-of: saritasa-cicd
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: go-mod
+  template:
+    metadata:
+      labels:
+        app: go-mod
+    spec:
+      imagePullSecrets:
+        - name: ghcr-credentials
+      containers:
+        - name: go-mod
+          image: busybox:1.36
+          args: ["sleep", "infinity"]
+          ports:
+            - containerPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: go-mod
+  namespace: dev
+spec:
+  selector:
+    app: go-mod
+  ports:
+    - port: 8080
+      targetPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: python-pip
+  namespace: dev
+  labels:
+    app: python-pip
+    app.kubernetes.io/part-of: saritasa-cicd
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: python-pip
+  template:
+    metadata:
+      labels:
+        app: python-pip
+    spec:
+      imagePullSecrets:
+        - name: ghcr-credentials
+      containers:
+        - name: python-pip
+          image: busybox:1.36
+          args: ["sleep", "infinity"]
+          ports:
+            - containerPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: python-pip
+  namespace: dev
+spec:
+  selector:
+    app: python-pip
+  ports:
+    - port: 8080
+      targetPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: python-poetry
+  namespace: dev
+  labels:
+    app: python-poetry
+    app.kubernetes.io/part-of: saritasa-cicd
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: python-poetry
+  template:
+    metadata:
+      labels:
+        app: python-poetry
+    spec:
+      imagePullSecrets:
+        - name: ghcr-credentials
+      containers:
+        - name: python-poetry
+          image: busybox:1.36
+          args: ["sleep", "infinity"]
+          ports:
+            - containerPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: python-poetry
+  namespace: dev
+spec:
+  selector:
+    app: python-poetry
+  ports:
+    - port: 8080
+      targetPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nodejs-npm
+  namespace: dev
+  labels:
+    app: nodejs-npm
+    app.kubernetes.io/part-of: saritasa-cicd
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nodejs-npm
+  template:
+    metadata:
+      labels:
+        app: nodejs-npm
+    spec:
+      imagePullSecrets:
+        - name: ghcr-credentials
+      containers:
+        - name: nodejs-npm
+          image: busybox:1.36
+          args: ["sleep", "infinity"]
+          ports:
+            - containerPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nodejs-npm
+  namespace: dev
+spec:
+  selector:
+    app: nodejs-npm
+  ports:
+    - port: 8080
+      targetPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nodejs-yarn
+  namespace: dev
+  labels:
+    app: nodejs-yarn
+    app.kubernetes.io/part-of: saritasa-cicd
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nodejs-yarn
+  template:
+    metadata:
+      labels:
+        app: nodejs-yarn
+    spec:
+      imagePullSecrets:
+        - name: ghcr-credentials
+      containers:
+        - name: nodejs-yarn
+          image: busybox:1.36
+          args: ["sleep", "infinity"]
+          ports:
+            - containerPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nodejs-yarn
+  namespace: dev
+spec:
+  selector:
+    app: nodejs-yarn
+  ports:
+    - port: 8080
+      targetPort: 8080
