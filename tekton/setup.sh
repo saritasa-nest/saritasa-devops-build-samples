@@ -19,8 +19,8 @@ set -euo pipefail
 
 TEKTON_DIR="$(cd "$(dirname "$0")" && pwd)"
 MANIFESTS="${TEKTON_DIR}/manifests"
-TASKS="${TEKTON_DIR}/tasks"
-PAC_DIR="${TEKTON_DIR}/pac"
+
+
 SECRETS_FILE="${TEKTON_DIR}/secrets.env"
 PROFILE="${MINIKUBE_PROFILE:-saritasa}"
 WEBHOOK_PORT="${WEBHOOK_PORT:-8080}"
@@ -103,7 +103,7 @@ apply_namespace_rbac_secrets() {
   load_secrets
 
   log "Applying tekton namespace"
-  $K apply -f "${MANIFESTS}/namespace.yaml"
+  $K apply -f "${MANIFESTS}/ns-tekton.yaml"
 
   log "Applying pipeline service account RBAC (tekton namespace)"
   $K apply -f "${MANIFESTS}/rbac-pipeline-sa.yaml"
@@ -163,8 +163,7 @@ EOF
 
 # ── Phase 4: Tasks ───────────────────────────────────────────────────────────
 #
-# Community tasks are installed directly from Tekton Hub (pinned versions).
-# Custom tasks (deploy) live in tekton/tasks/ and are applied from disk.
+# Community tasks are installed directly from the Tekton catalog (pinned versions).
 # The pipeline definition lives in .tekton/ and is managed by PAC at trigger time.
 
 CATALOG="https://raw.githubusercontent.com/tektoncd/catalog/main/task"
@@ -181,13 +180,6 @@ apply_tasks_and_pipeline() {
   log "Installing kubernetes-actions v0.2 from Tekton catalog"
   $K apply -n tekton -f "${CATALOG}/kubernetes-actions/0.2/kubernetes-actions.yaml"
 
-  log "Applying custom tasks"
-  for f in "${TASKS}"/*.yaml; do
-    [[ -f "$f" ]] || continue
-    log "  → $(basename "$f")"
-    $K apply -n tekton -f "$f"
-  done
-
   ok "Tasks ready"
 }
 
@@ -199,7 +191,7 @@ apply_dev_deployments() {
   load_secrets
 
   log "Applying dev namespace"
-  $K apply -f "${MANIFESTS}/namespace-dev.yaml"
+  $K apply -f "${MANIFESTS}/ns-dev.yaml"
 
   log "Applying pipeline-sa RBAC for dev namespace"
   $K apply -f "${MANIFESTS}/rbac-pipeline-sa-dev.yaml"
@@ -213,7 +205,7 @@ apply_dev_deployments() {
     --dry-run=client -o yaml | $K apply -f -
 
   log "Applying placeholder Deployments + Services"
-  $K apply -f "${MANIFESTS}/deployments.yaml"
+  $K apply -f "${MANIFESTS}/apps-dev.yaml"
 
   ok "Dev namespace and deployments ready"
 }
@@ -224,7 +216,7 @@ apply_pac() {
   phase "Pipelines as Code — Repository CR"
 
   log "Applying Repository CR"
-  $K apply -f "${PAC_DIR}/repository.yaml"
+  $K apply -f "${MANIFESTS}/repository.yaml"
 
   if [[ -n "${GITHUB_APP_ID:-}" && -n "${GITHUB_APP_PRIVATE_KEY_FILE:-}" ]]; then
     [[ -f "${GITHUB_APP_PRIVATE_KEY_FILE}" ]] \

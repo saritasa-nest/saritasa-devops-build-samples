@@ -1,28 +1,23 @@
----
-# Grant pipeline-sa (lives in tekton ns) least-privilege access to the dev namespace.
-# Open enough for debugging now; tighten verbs after rollout patterns are stable.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: pipeline-role-dev
   namespace: dev
+  labels:
+    app.kubernetes.io/part-of: saritasa-cicd
 rules:
-  # Patch image and check rollout progress
   - apiGroups: ["apps"]
     resources: ["deployments"]
     verbs: ["get", "list", "watch", "patch", "update"]
-  # rollout status tracks ReplicaSets under the hood
   - apiGroups: ["apps"]
     resources: ["replicasets"]
     verbs: ["get", "list", "watch"]
-  # Pod inspection for debugging failed rollouts
   - apiGroups: [""]
     resources: ["pods"]
     verbs: ["get", "list"]
   - apiGroups: [""]
     resources: ["pods/log"]
     verbs: ["get"]
-  # Event dump in deploy.py on rollout timeout
   - apiGroups: [""]
     resources: ["events"]
     verbs: ["get", "list"]
@@ -32,6 +27,8 @@ kind: RoleBinding
 metadata:
   name: pipeline-rolebinding-dev
   namespace: dev
+  labels:
+    app.kubernetes.io/part-of: saritasa-cicd
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role

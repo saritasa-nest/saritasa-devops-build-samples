@@ -1,12 +1,3 @@
-# Pre-created placeholder Deployments and Services for each buildpack component.
-# The pipeline patches the image field once a build succeeds.
-#
-# imagePullSecrets references ghcr-credentials by name — swap the secret content
-# to point to a different private registry without touching these manifests.
-#
-# Container names follow the component-id convention so future patch-by-name
-# strategies remain consistent across all components.
-
 ---
 apiVersion: apps/v1
 kind: Deployment

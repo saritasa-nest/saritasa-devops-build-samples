@@ -11,5 +11,3 @@
 ## Viewing
 
 `curl http://localhost:8080`
-# test
-# pac-test
