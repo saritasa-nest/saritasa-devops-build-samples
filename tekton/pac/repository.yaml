@@ -1,0 +1,20 @@
+apiVersion: "pipelinesascode.tekton.dev/v1alpha1"
+kind: Repository
+metadata:
+  name: saritasa-devops-build-samples
+  namespace: tekton
+  labels:
+    app.kubernetes.io/part-of: saritasa-cicd
+spec:
+  url: "https://github.com/dknhat2000/saritasa-devops-build-samples"
+  # Queues PipelineRuns when more than this many are active for the same repo.
+  # Replaces the MAX_CONCURRENT_BUILDS ConfigMap key + dispatcher concurrency gate.
+  concurrency_limit: 2
+  git_provider:
+    # GitHub App installation token — short-lived, auto-refreshed by PAC.
+    secret:
+      name: pipelines-as-code-secret
+      key: github-application-id
+    webhook_secret:
+      name: github-webhook-secret
+      key: secretToken
