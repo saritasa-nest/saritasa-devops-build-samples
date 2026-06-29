@@ -105,6 +105,9 @@ apply_namespace_rbac_secrets() {
   log "Applying tekton namespace"
   $K apply -f "${MANIFESTS}/ns-tekton.yaml"
 
+  log "Applying ResourceQuota + LimitRange (tekton namespace)"
+  $K apply -f "${MANIFESTS}/quota-tekton.yaml"
+
   log "Applying pipeline service account RBAC (tekton namespace)"
   $K apply -f "${MANIFESTS}/rbac-pipeline-sa.yaml"
 

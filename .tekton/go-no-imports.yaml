@@ -14,6 +14,9 @@ metadata:
     pipelinesascode.tekton.dev/max-keep-runs:   "5"
     pipelinesascode.tekton.dev/task:         "[https://raw.githubusercontent.com/tektoncd/catalog/main/task/git-clone/0.9/git-clone.yaml, https://raw.githubusercontent.com/tektoncd/catalog/main/task/kubernetes-actions/0.2/kubernetes-actions.yaml]"
 spec:
+  timeouts:
+    pipeline: "10m0s"
+    tasks: "8m0s"
   pipelineRef:
     name: component-delivery
   taskRunTemplate:
