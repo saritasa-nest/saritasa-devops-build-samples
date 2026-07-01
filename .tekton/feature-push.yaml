@@ -28,7 +28,7 @@ spec:
       value: jackdock777
       
   pipelineRef:
-    name: build-project
+    name: orchestrator-pipeline
 
   workspaces:
     - name: source

@@ -29,7 +29,7 @@ spec:
       value: "{{ component_name }}"
 
   pipelineRef:
-    name: build-deploy-single-component
+    name: component-build-pipeline
 
   workspaces:
     - name: source
