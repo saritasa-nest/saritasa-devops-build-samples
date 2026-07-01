@@ -8,6 +8,7 @@ spec:
 
   workspaces:
     - name: source
+      description: Workspace containing this repository's source code
   
   steps:
     - name: create-resources

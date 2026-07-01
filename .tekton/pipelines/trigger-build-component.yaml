@@ -34,9 +34,6 @@ spec:
   workspaces:
     - name: source
       description: Workspace containing this repository's source code
-    - name: basic-auth
-      description: Git credentials
-      optional: true
     - name: docker-config
       description: Docker's config.json for pushing image
 

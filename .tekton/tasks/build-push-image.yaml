@@ -16,7 +16,9 @@ spec:
 
   workspaces:
     - name: source
+      description: Workspace containing this repository's source code
     - name: docker-config
+      description: Docker's config.json for pushing image
 
   results:
     - name: image-full-url
@@ -43,6 +45,7 @@ spec:
       volumeMounts:
         - name: docker-socket
           mountPath: /var/run/docker.sock
+          readOnly: true
       script: |
         #!/bin/bash
         set -eu
@@ -105,6 +108,7 @@ spec:
       volumeMounts:
         - name: docker-socket
           mountPath: /var/run/docker.sock
+          readOnly: true
       script: |
         #!/bin/sh
         set -eu

@@ -13,9 +13,6 @@ spec:
     - name: revision
       description: Git revision/commit SHA
       type: string
-    - name: git-auth-secret-name
-      description: Name of the Kubernetes secret containing Git credentials
-      type: string
     - name: changed-components
       description: Bash-like space-separated list of changed component directories
       type: string
@@ -38,6 +35,7 @@ spec:
 
   workspaces:
     - name: source
+      description: Workspace containing this repository's source code
 
   results:
     - name: build-count
@@ -131,7 +129,6 @@ spec:
               | .spec.params[] |= (select(.name == \"project-dir\") .value = \"$component\") 
               | .spec.params[] |= (select(.name == \"image-url\") .value = \"$IMAGE_REPOSITORY/$component_name\") 
               | .spec.params[] |= (select(.name == \"image-tag\") .value = \"$COMMIT_SHA_SHORT\") 
-              | .spec.workspaces[] |= (select(.name == \"basic-auth\") .secret.secretName = \"$GIT_AUTH_SECRET_NAME\") \
               | .spec.params[] |= (select(.name == \"component-name\") .value = \"$component_name\")" \
             "$(params.template-filepath)" | kubectl apply -f -
 

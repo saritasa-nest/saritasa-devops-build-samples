@@ -70,10 +70,10 @@ spec:
 
                 echo ""
 
-                echo -e "\033[0;32mNew image applied succesfully.\033[0m"
+                echo -e "New image applied succesfully."
                 echo -n "succeeded" > $(results.status.path)
             else
-                echo -e "\033[0;31mFailed to apply new image.\033[0m"
+                echo -e "Failed to apply new image."
                 echo -n "failed" > $(results.status.path)
 
                 exit 1
@@ -97,12 +97,12 @@ spec:
                 -n "$NAMESPACE" \
                 --timeout "$ROLLOUT_TIMEOUT"; then
 
-              echo -e "\033[0;32mRollout completed successfully.\033[0m"
+              echo -e "Rollout completed successfully."
             
               # Write result
               echo -n "succeeded" > $(results.status.path)
             else
-              echo -e "\033[0;31mRollout timeout\033[0m"
+              echo -e "Rollout timeout"
 
               # Write result
               echo -n "failed" > $(results.status.path)

@@ -16,22 +16,16 @@ spec:
 
   params:
     - name: repo-url
-      description: The URL of the Git repository
       value: "{{ repo_url }}"
     - name: revision
-      description: The Git revision to build
       value: "{{ revision }}"
     - name: project-dir
-      description: The subproject directory within this repository
       value: "{{ project_dir }}"
     - name: image-url
-      description: The URL of the image to build
       value: "{{ image_url }}"
     - name: image-tag
-      description: The tag of the image to build
       value: "{{ image_tag }}"
     - name: component-name
-      description: The name of the component to build
       value: "{{ component_name }}"
 
   pipelineRef:
@@ -41,10 +35,6 @@ spec:
     - name: source
       persistentVolumeClaim:
         claimName: repository-source-pvc
-
-    - name: basic-auth
-      secret:
-        secretName: "{{ git_auth_secret_name }}"
 
     # Docker config
     - name: docker-config
