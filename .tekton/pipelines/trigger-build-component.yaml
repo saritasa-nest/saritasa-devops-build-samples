@@ -4,6 +4,9 @@ metadata:
   name: build-deploy-single-component
   namespace: saritasa-devops-project
 spec:
+  description: |
+    This pipeline builds, pushes a component's OCI image and deploy to Kubernetes
+
   params:
     - name: repo-url
       type: string

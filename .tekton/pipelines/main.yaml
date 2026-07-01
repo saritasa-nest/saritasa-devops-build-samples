@@ -4,6 +4,9 @@ metadata:
   name: build-project
   namespace: saritasa-devops-project
 spec:
+  description: |
+    This pipeline detects changes in subprojects and orchestrates build to deploy updated components.
+
   params:
     - name: repo-url
       description: The repo URL where Git will clone
@@ -14,14 +17,16 @@ spec:
     - name: git-auth-secret-name
       description: Name of Kubernetes secret holding Git credentials
       type: string
-    - name: image-registry
-      description: Docker image registry URL
+    - name: image-repository
+      description: Docker image repository URL
       type: string
-      default: "docker.io"
+      default: "docker.io/library"
 
   workspaces:
     - name: source
+      description: Workspace containing this repository's source code
     - name: basic-auth
+      description: Git credentials
     
   tasks:
     - name: fetch-repository
