@@ -65,7 +65,7 @@ spec:
         [ -d "$CANDIDATE" ] || CANDIDATE="$(dirname "$CANDIDATE")"
 
         # Walk up from the changed directory until a build marker is found
-        MARKERS="package.json go.mod pom.xml build.gradle build.gradle.kts requirements.txt Pipfile pyproject.toml composer.json Gemfile Rakefile Procfile"
+        MARKERS="package.json go.mod pom.xml build.gradle build.gradle.kts requirements.txt Pipfile pyproject.toml composer.json Gemfile Rakefile Procfile nginx.conf"
         RESOLVED=""
         SCAN="$CANDIDATE"
         while :; do
