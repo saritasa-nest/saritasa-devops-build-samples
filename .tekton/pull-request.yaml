@@ -21,6 +21,8 @@ spec:
       value: "{{ repo_url }}"
     - name: revision
       value: "{{ revision }}"
+    - name: git-auth-secret-name
+      value: "{{ git_auth_secret }}"
     # This value needs updating to match your image registry
     - name: image-registry
       value: "<saritasa image registry>"
