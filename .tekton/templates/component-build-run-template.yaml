@@ -11,7 +11,8 @@ spec:
   timeouts:
     pipeline: 30m
 
-  serviceAccountName: ci
+  taskRunTemplate:
+    serviceAccountName: ci
 
   params:
     - name: repo-url

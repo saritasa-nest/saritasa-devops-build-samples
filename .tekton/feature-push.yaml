@@ -12,7 +12,8 @@ spec:
   timeout:
     pipeline: 1h
 
-  serviceAccountName: ci
+  taskRunTemplate:
+    serviceAccountName: ci
 
   params:
     # The variable with brackets are special to Pipelines-as-Code
