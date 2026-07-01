@@ -14,9 +14,6 @@ spec:
     - name: revision
       description: Repo's commit SHA
       type: string
-    - name: git-auth-secret-name
-      description: Name of Kubernetes secret holding Git credentials
-      type: string
     - name: image-repository
       description: Docker image repository URL
       type: string
@@ -75,8 +72,6 @@ spec:
           value: "$(params.repo-url)"
         - name: revision
           value: "$(params.revision)"
-        - name: git-auth-secret-name
-          value: "$(params.git-auth-secret-name)"
         - name: changed-components
           value: "$(tasks.detect-changed-components.results.changed-dirs)"
         - name: max-concurrent-builds

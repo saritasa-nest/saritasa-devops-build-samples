@@ -57,7 +57,6 @@ spec:
         NAMESPACE="$(params.pipeline-namespace)"
         REPO_URL="$(params.repo-url)"
         IMAGE_REPOSITORY="$(params.image-repository)"
-        GIT_AUTH_SECRET_NAME="$(params.git-auth-secret-name)"
 
         # Convert space-separated input into a Bash array
         read -r -a COMPONENTS <<< "$COMPONENTS_RAW"
