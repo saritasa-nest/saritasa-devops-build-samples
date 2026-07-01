@@ -80,8 +80,8 @@ spec:
           value: ".tekton/templates/component-build-run-template.yaml"
         - name: pipeline-namespace
           value: "saritasa-devops-project"
-        - name: image-registry
-          value: "$(params.image-registry)"
+        - name: image-repository
+          value: "$(params.image-repository)"
       workspaces:
         - name: source
           workspace: source

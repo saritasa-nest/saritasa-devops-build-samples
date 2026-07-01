@@ -27,8 +27,8 @@ spec:
       description: Kubernetes namespace for containing PipelineRuns
       type: string
       default: "tekton-pipelines"
-    - name: image-registry
-      description: Docker image registry URL
+    - name: image-repository
+      description: Docker image repository URL
       type: string
       default: "docker.io"
     - name: template-filepath
@@ -58,7 +58,7 @@ spec:
         REVISION="$(params.revision)"
         NAMESPACE="$(params.pipeline-namespace)"
         REPO_URL="$(params.repo-url)"
-        IMAGE_REGISTRY="$(params.image-registry)"
+        IMAGE_REPOSITORY="$(params.image-repository)"
         GIT_AUTH_SECRET_NAME="$(params.git-auth-secret-name)"
 
         # Convert space-separated input into a Bash array
@@ -129,7 +129,7 @@ spec:
               | .spec.params[] |= (select(.name == \"repo-url\") .value = \"$REPO_URL\") 
               | .spec.params[] |= (select(.name == \"revision\") .value = \"$REVISION\") 
               | .spec.params[] |= (select(.name == \"project-dir\") .value = \"$component\") 
-              | .spec.params[] |= (select(.name == \"image-url\") .value = \"$IMAGE_REGISTRY/$component_name\") 
+              | .spec.params[] |= (select(.name == \"image-url\") .value = \"$IMAGE_REPOSITORY/$component_name\") 
               | .spec.params[] |= (select(.name == \"image-tag\") .value = \"$COMMIT_SHA_SHORT\") 
               | .spec.workspaces[] |= (select(.name == \"basic-auth\") .secret.secretName = \"$GIT_AUTH_SECRET_NAME\") \
               | .spec.params[] |= (select(.name == \"component-name\") .value = \"$component_name\")" \
