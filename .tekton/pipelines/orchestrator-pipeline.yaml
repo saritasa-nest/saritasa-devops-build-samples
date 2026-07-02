@@ -14,6 +14,10 @@ spec:
     - name: revision
       description: Repo's commit SHA
       type: string
+    - name: base-revision
+      description: Optional base commit SHA used to detect changed files across a push range
+      type: string
+      default: ""
     - name: image-repository
       description: Docker image repository URL
       type: string
@@ -49,6 +53,9 @@ spec:
         name: detect-changed-components
       runAfter:
         - fetch-repository
+      params:
+        - name: base-revision
+          value: "$(params.base-revision)"
       workspaces:
         - name: source
           workspace: source
