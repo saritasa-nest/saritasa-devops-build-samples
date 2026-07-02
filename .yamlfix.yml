@@ -1,0 +1,39 @@
+blank_lines:
+  keep_after: document
+  keep_before: document
+  keep_in_between: document
+  smart: true
+brackets:
+  force_main: true
+  smart: true
+  type: dont_change
+comments:
+  apply: rebase
+  drain: drain
+  drain_next_lines: false
+  padding: 1
+empty_values:
+  smart: true
+indent:
+  spaces: 2
+  use_padding: true
+main:
+  always: false
+  file: .yamllint
+  strict: true
+quoting:
+  any: false
+  clusters: false
+  columns: false
+  force: false
+  min_length: 30
+  required: false
+  required_type: dict
+  smart: true
+  style: double
+  templating: false
+sequence:
+  give: 30
+  indent: 2
+  offset: 0
+  style: block

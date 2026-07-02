@@ -10,21 +10,21 @@ spec:
   pipelineRef:
     name: build-and-deploy
   params:
-    - name: GIT_URL
+    - name: git_url
       value: https://github.com/saritasa-nest/saritasa-devops-build-samples.git
-    - name: GIT_REVISION
+    - name: git_revision
       value: main
-    - name: COMPONENT_PATH
+    - name: component_path
       value: nodejs/npm
-    - name: IMAGE
+    - name: image
       value: docker.io/lbcristaldo/nodejs-npm:test
-    - name: DEPLOYMENT_NAME
+    - name: deployment_name
       value: nodejs-npm-app
-    - name: NAMESPACE
+    - name: namespace
       value: default
-    - name: MAX_CONCURRENT
+    - name: max_concurrent
       value: "2"
-    - name: PIPELINE_NAMESPACE
+    - name: pipeline_namespace
       value: tekton-pipelines
   workspaces:
     - name: source

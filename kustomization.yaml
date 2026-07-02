@@ -1,0 +1,29 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - k8s/triggers-rbac.yaml
+  - k8s/buildpacks-pvc.yaml
+  - k8s/concurrency-limit.yaml
+  - tekton/tasks/buildpacks-creator.yaml
+  - tekton/tasks/create-pipelineruns.yaml
+  - tekton/tasks/detect-components.yaml
+  - tekton/tasks/concurrency-check.yaml
+  - tekton/tasks/git-clone.yaml
+  - tekton/tasks/patch-deployment.yaml
+  - tekton/tasks/notify-result.yaml
+  - tekton/pipelines/build-and-deploy.yaml
+  - tekton/pipelines/process-changes.yaml
+  - tekton/triggers/github-listener.yaml
+  - tekton/triggers/github-push-binding.yaml
+  - tekton/triggers/github-push-template.yaml
+  - tekton/pipelineruns/test-npm-component.yaml
+namespace: tekton-pipelines
+labels:
+  - includeSelectors: true
+    pairs:
+      app: devops-build-samples
+  - pairs:
+      app.kubernetes.io/name: devops-build-samples
+      app.kubernetes.io/component: ci-cd
+commonAnnotations:
+  project: saritasa-devops-build-samples

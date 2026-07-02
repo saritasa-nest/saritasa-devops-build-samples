@@ -5,9 +5,15 @@ metadata:
   namespace: tekton-pipelines
 spec:
   params:
-    - name: oldSha
+    - name: old_sha
       value: $(body.before)
-    - name: newSha
+    - name: new_sha
       value: $(body.after)
-    - name: gitUrl
+    - name: git_url
       value: $(body.repository.clone_url)
+    - name: image_prefix
+      value: "docker.io/lbcristaldo"   
+    - name: max_concurrent
+      value: "5"      
+    - name: pipeline_namespace
+      value: "tekton-pipelines"

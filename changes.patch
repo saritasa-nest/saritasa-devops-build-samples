@@ -1,0 +1,908 @@
+diff --git a/README-WIP.md b/README-WIP.md
+index c9df8bf..8b60c93 100644
+--- a/README-WIP.md
++++ b/README-WIP.md
+@@ -9,11 +9,17 @@
+ 
+ ## Architecture
+ 
+-```
+-GitHub Webhook -> EventListener -> TriggerBinding -> TriggerTemplate -> PipelineRun (process-changes)
+-                                                                                     |
+-                                                                                     v
+-                                                                            detect-components -> create-pipelineruns -> [build-and-deploy per component]
++```mermaid
++flowchart TD
++    A[GitHub Webhook] --> B[EventListener]
++    B --> C[TriggerBinding]
++    C --> D[TriggerTemplate]
++    D --> E[PipelineRun: process-changes]
++    E --> F[Task: git-clone]
++    F --> G[Task: detect-components]
++    G --> H[Task: concurrency-check]
++    H --> I[Task: create-pipelineruns]
++    I --> J[PipelineRun: build-and-deploy]
+ ```
+ 
+ ## Phase 0: Local Environment Setup (Low RAM Systems - 8GB)
+diff --git a/k8s/concurrency-limit.yaml b/k8s/concurrency-limit.yaml
+index ce50650..1a0d580 100644
+--- a/k8s/concurrency-limit.yaml
++++ b/k8s/concurrency-limit.yaml
+@@ -2,7 +2,6 @@ apiVersion: v1
+ kind: LimitRange
+ metadata:
+   name: pipeline-concurrency-limit
+-  namespace: tekton-pipelines
+ spec:
+   limits:
+     - type: Container
+@@ -17,10 +16,9 @@ apiVersion: v1
+ kind: ResourceQuota
+ metadata:
+   name: pipeline-quota
+-  namespace: tekton-pipelines
+ spec:
+   hard:
+     requests.cpu: "2"
+     requests.memory: "2Gi"
+     limits.cpu: "4"
+-    limits.memory: "4Gi"
++    limits.memory: "4Gi"
+\ No newline at end of file
+diff --git a/k8s/triggers-rbac.yaml b/k8s/triggers-rbac.yaml
+index 98b4ebf..5e3aeea 100644
+--- a/k8s/triggers-rbac.yaml
++++ b/k8s/triggers-rbac.yaml
+@@ -10,27 +10,60 @@ metadata:
+   name: tekton-triggers-role
+   namespace: tekton-pipelines
+ rules:
+-  - apiGroups: ["tekton.dev"]
+-    resources: ["pipelineruns", "pipelines", "tasks"]
+-    verbs: ["create", "get", "list", "watch", "update", "delete"]
+-  - apiGroups: [""]
+-    resources: ["pods", "pods/log"]
+-    verbs: ["get", "list", "watch"]
+-  - apiGroups: [""]
+-    resources: ["secrets"]
+-    verbs: ["get"]
+-  - apiGroups: ["triggers.tekton.dev"]
+-    resources: ["triggers", "triggertemplates", "eventlisteners", "interceptors"]
+-    verbs: ["get", "list", "watch"]
++  - apiGroups:
++      - tekton.dev
++    resources:
++      - pipelineruns
++      - pipelines
++      - tasks
++    verbs:
++      - create
++      - get
++      - list
++      - watch
++      - update
++      - delete
++  - apiGroups:
++      - ""
++    resources:
++      - pods
++      - pods/log
++    verbs:
++      - get
++      - list
++      - watch
++  - apiGroups:
++      - ""
++    resources:
++      - secrets
++    verbs:
++      - get
++  - apiGroups:
++      - triggers.tekton.dev
++    resources:
++      - triggers
++      - triggertemplates
++      - eventlisteners
++      - interceptors
++    verbs:
++      - get
++      - list
++      - watch
+ ---
+ apiVersion: rbac.authorization.k8s.io/v1
+ kind: ClusterRole
+ metadata:
+   name: tekton-triggers-cluster-role
+ rules:
+-  - apiGroups: ["triggers.tekton.dev"]
+-    resources: ["clusterinterceptors", "clustertriggerbindings"]
+-    verbs: ["get", "list", "watch"]
++  - apiGroups:
++      - triggers.tekton.dev
++    resources:
++      - clusterinterceptors
++      - clustertriggerbindings
++    verbs:
++      - get
++      - list
++      - watch
+ ---
+ apiVersion: rbac.authorization.k8s.io/v1
+ kind: RoleBinding
+@@ -65,12 +98,25 @@ metadata:
+   name: pipeline-role
+   namespace: default
+ rules:
+-  - apiGroups: ["apps"]
+-    resources: ["deployments"]
+-    verbs: ["get", "list", "patch", "update"]
+-  - apiGroups: [""]
+-    resources: ["pods", "services"]
+-    verbs: ["get", "list", "patch", "update"]
++  - apiGroups:
++      - apps
++    resources:
++      - deployments
++    verbs:
++      - get
++      - list
++      - patch
++      - update
++  - apiGroups:
++      - ""
++    resources:
++      - pods
++      - services
++    verbs:
++      - get
++      - list
++      - patch
++      - update
+ ---
+ apiVersion: rbac.authorization.k8s.io/v1
+ kind: RoleBinding
+diff --git a/tekton/pipelineruns/test-npm-component.yaml b/tekton/pipelineruns/test-npm-component.yaml
+index a5bfa3c..f84e6be 100644
+--- a/tekton/pipelineruns/test-npm-component.yaml
++++ b/tekton/pipelineruns/test-npm-component.yaml
+@@ -10,21 +10,21 @@ spec:
+   pipelineRef:
+     name: build-and-deploy
+   params:
+-    - name: GIT_URL
++    - name: git_url
+       value: https://github.com/saritasa-nest/saritasa-devops-build-samples.git
+-    - name: GIT_REVISION
++    - name: git_revision
+       value: main
+-    - name: COMPONENT_PATH
++    - name: component_path
+       value: nodejs/npm
+-    - name: IMAGE
++    - name: image
+       value: docker.io/lbcristaldo/nodejs-npm:test
+-    - name: DEPLOYMENT_NAME
++    - name: deployment_name
+       value: nodejs-npm-app
+-    - name: NAMESPACE
++    - name: namespace
+       value: default
+-    - name: MAX_CONCURRENT
++    - name: max_concurrent
+       value: "2"
+-    - name: PIPELINE_NAMESPACE
++    - name: pipeline_namespace
+       value: tekton-pipelines
+   workspaces:
+     - name: source
+@@ -37,4 +37,4 @@ spec:
+       subPath: cache
+     - name: docker-config
+       secret:
+-        secretName: dockerhub-secret
++        secretName: dockerhub-secret
+\ No newline at end of file
+diff --git a/tekton/pipelines/build-and-deploy.yaml b/tekton/pipelines/build-and-deploy.yaml
+index 2a9ad5e..38c48b6 100644
+--- a/tekton/pipelines/build-and-deploy.yaml
++++ b/tekton/pipelines/build-and-deploy.yaml
+@@ -5,32 +5,32 @@ metadata:
+ spec:
+   description: Clone repo, build with Paketo, and deploy to Kubernetes.
+   params:
+-    - name: GIT_URL
++    - name: git_url
+       type: string
+       description: Git repository URL to clone.
+-    - name: GIT_REVISION
++    - name: git_revision
+       type: string
+       default: main
+       description: Git revision to checkout.
+-    - name: COMPONENT_PATH
++    - name: component_path
+       type: string
+       default: ""
+       description: Subdirectory path within repo, for example nodejs/npm.
+-    - name: IMAGE
++    - name: image
+       type: string
+       description: Full image reference to publish, for example docker.io/lbcristaldo/component:sha-abc123.
+-    - name: DEPLOYMENT_NAME
++    - name: deployment_name
+       type: string
+       description: Name of the deployment to update.
+-    - name: NAMESPACE
++    - name: namespace
+       type: string
+       default: default
+       description: Target namespace for deployment.
+-    - name: MAX_CONCURRENT
++    - name: max_concurrent
+       type: string
+       default: "2"
+       description: Max concurrent component builds.
+-    - name: PIPELINE_NAMESPACE
++    - name: pipeline_namespace
+       type: string
+       default: tekton-pipelines
+       description: Namespace where this PipelineRun is running.
+@@ -47,10 +47,10 @@ spec:
+       taskRef:
+         name: concurrency-check
+       params:
+-        - name: MAX_CONCURRENT
+-          value: $(params.MAX_CONCURRENT)
+-        - name: NAMESPACE
+-          value: $(params.PIPELINE_NAMESPACE)
++        - name: max_concurrent
++          value: $(params.max_concurrent)
++        - name: namespace
++          value: $(params.pipeline_namespace)
+     - name: clone
+       taskRef:
+         name: git-clone
+@@ -58,11 +58,11 @@ spec:
+         - concurrency-check
+       params:
+         - name: url
+-          value: $(params.GIT_URL)
++          value: $(params.git_url)
+         - name: revision
+-          value: $(params.GIT_REVISION)
++          value: $(params.git_revision)
+         - name: subdirectory
+-          value: $(params.COMPONENT_PATH)
++          value: $(params.component_path)
+       workspaces:
+         - name: source
+           workspace: source
+@@ -72,10 +72,10 @@ spec:
+       runAfter:
+         - clone
+       params:
+-        - name: IMAGE
+-          value: $(params.IMAGE)
+-        - name: COMPONENT_PATH
+-          value: $(params.COMPONENT_PATH)
++        - name: image
++          value: $(params.image)
++        - name: component_path
++          value: $(params.component_path)
+       workspaces:
+         - name: source
+           workspace: source
+@@ -89,9 +89,9 @@ spec:
+       runAfter:
+         - build
+       params:
+-        - name: DEPLOYMENT_NAME
+-          value: $(params.DEPLOYMENT_NAME)
+-        - name: IMAGE
+-          value: $(params.IMAGE)
+-        - name: NAMESPACE
+-          value: $(params.NAMESPACE)
++        - name: deployment_name
++          value: $(params.deployment_name)
++        - name: image
++          value: $(params.image)
++        - name: namespace
++          value: $(params.namespace)
+\ No newline at end of file
+diff --git a/tekton/pipelines/process-changes.yaml b/tekton/pipelines/process-changes.yaml
+index 5772130..3174682 100644
+--- a/tekton/pipelines/process-changes.yaml
++++ b/tekton/pipelines/process-changes.yaml
+@@ -5,24 +5,24 @@ metadata:
+ spec:
+   description: Process GitHub push webhook, detect changed components, and create one build PipelineRun per component.
+   params:
+-    - name: GIT_URL
++    - name: git_url
+       type: string
+       description: Git repository URL from GitHub webhook.
+-    - name: OLD_SHA
++    - name: old_sha
+       type: string
+       description: Previous commit SHA.
+-    - name: NEW_SHA
++    - name: new_sha
+       type: string
+       description: New commit SHA.
+-    - name: IMAGE_PREFIX
++    - name: image_prefix
+       type: string
+       default: docker.io/lbcristaldo
+       description: Docker Hub registry prefix.
+-    - name: MAX_CONCURRENT
++    - name: max_concurrent
+       type: string
+       default: "2"
+       description: Max concurrent component builds.
+-    - name: PIPELINE_NAMESPACE
++    - name: pipeline_namespace
+       type: string
+       default: tekton-pipelines
+       description: Namespace where component PipelineRuns are created.
+@@ -40,19 +40,19 @@ spec:
+         name: git-clone
+       params:
+         - name: url
+-          value: $(params.GIT_URL)
++          value: $(params.git_url)
+         - name: revision
+-          value: $(params.NEW_SHA)
++          value: $(params.new_sha)
+     - name: detect-components
+       taskRef:
+         name: detect-components
+       runAfter:
+         - clone-full
+       params:
+-        - name: OLD_SHA
+-          value: $(params.OLD_SHA)
+-        - name: NEW_SHA
+-          value: $(params.NEW_SHA)
++        - name: old_sha
++          value: $(params.old_sha)
++        - name: new_sha
++          value: $(params.new_sha)
+       workspaces:
+         - name: source
+           workspace: source
+@@ -62,27 +62,27 @@ spec:
+       runAfter:
+         - detect-components
+       params:
+-        - name: MAX_CONCURRENT
+-          value: $(params.MAX_CONCURRENT)
+-        - name: NAMESPACE
+-          value: $(params.PIPELINE_NAMESPACE)
++        - name: max_concurrent
++          value: $(params.max_concurrent)
++        - name: namespace
++          value: $(params.pipeline_namespace)
+     - name: create-pipelineruns
+       taskRef:
+         name: create-pipelineruns
+       runAfter:
+         - check-concurrency
+       params:
+-        - name: COMPONENTS
++        - name: components
+           value: $(tasks.detect-components.results.components)
+-        - name: GIT_URL
+-          value: $(params.GIT_URL)
+-        - name: IMAGE_PREFIX
+-          value: $(params.IMAGE_PREFIX)
+-        - name: GIT_REVISION
+-          value: $(params.NEW_SHA)
+-        - name: NAMESPACE
+-          value: $(params.PIPELINE_NAMESPACE)
+-        - name: MAX_CONCURRENT
+-          value: $(params.MAX_CONCURRENT)
+-        - name: PIPELINE_NAMESPACE
+-          value: $(params.PIPELINE_NAMESPACE)
++        - name: git_url
++          value: $(params.git_url)
++        - name: image_prefix
++          value: $(params.image_prefix)
++        - name: git_revision
++          value: $(params.new_sha)
++        - name: namespace
++          value: $(params.pipeline_namespace)
++        - name: max_concurrent
++          value: $(params.max_concurrent)
++        - name: pipeline_namespace
++          value: $(params.pipeline_namespace)
+\ No newline at end of file
+diff --git a/tekton/tasks/concurrency-check.yaml b/tekton/tasks/concurrency-check.yaml
+index a209829..3ec87ef 100644
+--- a/tekton/tasks/concurrency-check.yaml
++++ b/tekton/tasks/concurrency-check.yaml
+@@ -5,37 +5,37 @@ metadata:
+ spec:
+   description: Wait until the number of running PipelineRuns is below the configured limit.
+   params:
+-    - name: MAX_CONCURRENT
++    - name: max_concurrent
+       type: string
+       default: "2"
+       description: Maximum concurrent PipelineRuns allowed.
+-    - name: NAMESPACE
++    - name: namespace
+       type: string
+       default: tekton-pipelines
+       description: Namespace where component PipelineRuns are created.
+   steps:
+     - name: check
+-      image: bitnami/kubectl:latest
++      image: alpine/k8s:1.33.13
+       script: |
+         #!/bin/sh
+         set -eu
+ 
+-        MAX_CONCURRENT="$(params.MAX_CONCURRENT)"
+-        NAMESPACE="$(params.NAMESPACE)"
++        max_concurrent="$(params.max_concurrent)"
++        namespace="$(params.namespace)"
+ 
+         while true; do
+-          RUNNING=$(kubectl get pipelineruns -n "$NAMESPACE" -o json 2>/dev/null | \
++          running=$(kubectl get pipelineruns -n "$namespace" -o json 2>/dev/null | \
+             jq '[.items[] | select([.status.conditions[]?.status == "Unknown"] | any)] | length' 2>/dev/null || echo "0")
+ 
+-          if [ -z "$RUNNING" ]; then
+-            RUNNING=0
++          if [ -z "$running" ]; then
++            running=0
+           fi
+ 
+-          if [ "$RUNNING" -lt "$MAX_CONCURRENT" ]; then
+-            echo "Concurrency check passed: $RUNNING/$MAX_CONCURRENT PipelineRuns running in namespace $NAMESPACE"
++          if [ "$running" -lt "$max_concurrent" ]; then
++            echo "Concurrency check passed: $running/$max_concurrent PipelineRuns running in namespace $namespace"
+             exit 0
+           fi
+ 
+-          echo "Concurrency limit reached ($RUNNING/$MAX_CONCURRENT) in namespace $NAMESPACE; waiting before starting this component build"
++          echo "Concurrency limit reached ($running/$max_concurrent) in namespace $namespace; waiting before starting this component build"
+           sleep 10
+-        done
++        done
+\ No newline at end of file
+diff --git a/tekton/tasks/create-pipelineruns.yaml b/tekton/tasks/create-pipelineruns.yaml
+index b652a84..9b6c8f9 100644
+--- a/tekton/tasks/create-pipelineruns.yaml
++++ b/tekton/tasks/create-pipelineruns.yaml
+@@ -5,100 +5,100 @@ metadata:
+ spec:
+   description: Create one build-and-deploy PipelineRun per modified component.
+   params:
+-    - name: COMPONENTS
++    - name: components
+       type: string
+       description: Space-separated list of component paths.
+-    - name: GIT_URL
++    - name: git_url
+       type: string
+       description: Git repository URL to build.
+-    - name: IMAGE_PREFIX
++    - name: image_prefix
+       type: string
+       default: docker.io/lbcristaldo
+       description: Docker Hub registry prefix for images.
+-    - name: GIT_REVISION
++    - name: git_revision
+       type: string
+       default: main
+       description: Git revision for builds.
+-    - name: NAMESPACE
++    - name: namespace
+       type: string
+       default: tekton-pipelines
+       description: Namespace where component PipelineRuns are created.
+-    - name: SERVICE_ACCOUNT_NAME
++    - name: service_account_name
+       type: string
+       default: tekton-triggers-sa
+       description: ServiceAccount used by component PipelineRuns.
+-    - name: MAX_CONCURRENT
++    - name: max_concurrent
+       type: string
+       default: "2"
+       description: Maximum concurrent component builds.
+-    - name: PIPELINE_NAMESPACE
++    - name: pipeline_namespace
+       type: string
+       default: tekton-pipelines
+       description: Namespace used by component PipelineRuns for concurrency checks.
+   steps:
+     - name: create-pipelineruns
+-      image: bitnami/kubectl:latest
++      image: dtzar/helm-kubectl:4.2
+       script: |
+         #!/bin/sh
+         set -eu
+ 
+-        COMPONENTS="$(params.COMPONENTS)"
+-        GIT_URL="$(params.GIT_URL)"
+-        IMAGE_PREFIX="$(params.IMAGE_PREFIX)"
+-        GIT_REVISION="$(params.GIT_REVISION)"
+-        NAMESPACE="$(params.NAMESPACE)"
+-        SERVICE_ACCOUNT_NAME="$(params.SERVICE_ACCOUNT_NAME)"
+-        MAX_CONCURRENT="$(params.MAX_CONCURRENT)"
+-        PIPELINE_NAMESPACE="$(params.PIPELINE_NAMESPACE)"
++        components="$(params.components)"
++        git_url="$(params.git_url)"
++        image_prefix="$(params.image_prefix)"
++        git_revision="$(params.git_revision)"
++        namespace="$(params.namespace)"
++        service_account_name="$(params.service_account_name)"
++        max_concurrent="$(params.max_concurrent)"
++        pipeline_namespace="$(params.pipeline_namespace)"
+ 
+-        if [ -z "$GIT_URL" ]; then
+-          echo "ERROR: GIT_URL is required"
++        if [ -z "$git_url" ]; then
++          echo "ERROR: git_url is required"
+           exit 1
+         fi
+ 
+-        if [ "$COMPONENTS" = "no-op" ] || [ -z "$COMPONENTS" ]; then
++        if [ "$components" = "no-op" ] || [ -z "$components" ]; then
+           echo "No buildpack-ready components to build; skipping child PipelineRuns"
+           exit 0
+         fi
+ 
+         TIMESTAMP=$(date +%s)
+ 
+-        for component in $COMPONENTS; do
+-          COMPONENT_NAME=$(printf '%s' "$component" | tr '/' '-')
+-          IMAGE="${IMAGE_PREFIX}/${COMPONENT_NAME}:${GIT_REVISION}"
+-          DEPLOYMENT="${COMPONENT_NAME}-app"
++        for component in $components; do
++          component_name=$(printf '%s' "$component" | tr '/' '-')
++          image="${image_prefix}/${component_name}:${git_revision}"
++          deployment="${component_name}-app"
+ 
+-          echo "Creating one PipelineRun for component $component -> $IMAGE -> $NAMESPACE/$DEPLOYMENT"
++          echo "Creating one PipelineRun for component $component -> $image -> $namespace/$deployment"
+ 
+-          cat <<EOF | kubectl apply -n "$NAMESPACE" -f -
++          cat <<EOF | kubectl apply -n "$namespace" -f -
+             apiVersion: tekton.dev/v1beta1
+             kind: PipelineRun
+             metadata:
+-              generateName: build-${COMPONENT_NAME}-
++              generateName: build-${component_name}-
+             spec:
+-              serviceAccountName: ${SERVICE_ACCOUNT_NAME}
++              serviceAccountName: ${service_account_name}
+               pipelineRef:
+                 name: build-and-deploy
+               params:
+-                - name: GIT_URL
+-                  value: "${GIT_URL}"
+-                - name: GIT_REVISION
+-                  value: "${GIT_REVISION}"
+-                - name: COMPONENT_PATH
++                - name: git_url
++                  value: "${git_url}"
++                - name: git_revision
++                  value: "${git_revision}"
++                - name: component_path
+                   value: "${component}"
+-                - name: IMAGE
+-                  value: "${IMAGE}"
+-                - name: DEPLOYMENT_NAME
+-                  value: "${DEPLOYMENT}"
+-                - name: NAMESPACE
+-                  value: "${NAMESPACE}"
+-                - name: MAX_CONCURRENT
+-                  value: "${MAX_CONCURRENT}"
+-                - name: PIPELINE_NAMESPACE
+-                  value: "${PIPELINE_NAMESPACE}"
++                - name: image
++                  value: "${image}"
++                - name: deployment_name
++                  value: "${deployment}"
++                - name: namespace
++                  value: "${namespace}"
++                - name: max_concurrent
++                  value: "${max_concurrent}"
++                - name: pipeline_namespace
++                  value: "${pipeline_namespace}"
+               workspaces:
+                 - name: source
+-                  persistentvolumeClaim:
++                  persistentVolumeClaim:
+                     claimName: buildpacks-pvc
+                   subPath: source
+                 - name: docker-config
+@@ -113,4 +113,4 @@ spec:
+           echo "PipelineRun for $component created"
+         done
+ 
+-        echo "SUCCESS: Created one PipelineRun per modified component with max concurrency $MAX_CONCURRENT"
++        echo "SUCCESS: Created one PipelineRun per modified component with max concurrency $max_concurrent"
+\ No newline at end of file
+diff --git a/tekton/tasks/detect-components.yaml b/tekton/tasks/detect-components.yaml
+index f830d86..9a6f6f1 100644
+--- a/tekton/tasks/detect-components.yaml
++++ b/tekton/tasks/detect-components.yaml
+@@ -5,10 +5,10 @@ metadata:
+ spec:
+   description: Detect modified buildpack-ready components between commits
+   params:
+-    - name: OLD_SHA
++    - name: old_sha
+       type: string
+       description: Previous commit SHA
+-    - name: NEW_SHA
++    - name: new_sha
+       type: string
+       description: New commit SHA
+   workspaces:
+@@ -24,13 +24,13 @@ spec:
+         #!/bin/sh
+         set -euo pipefail
+         cd $(workspaces.source.path)
+-        OLD_SHA="$(params.OLD_SHA)"
+-        NEW_SHA="$(params.NEW_SHA)"
++        old_sha="$(params.old_sha)"
++        new_sha="$(params.new_sha)"
+         
+-        CHANGED_FILES=$(git diff --name-only "$OLD_SHA" "$NEW_SHA" 2>/dev/null || true)
++        CHANGED_FILES=$(git diff --name-only "$old_sha" "$new_sha" 2>/dev/null || true)
+         
+         if [ -z "$CHANGED_FILES" ]; then
+-          echo "no-op: no changes detected between $OLD_SHA and $NEW_SHA"
++          echo "no-op: no changes detected between $old_sha and $new_sha"
+           echo -n "no-op" > $(results.components.path)
+           exit 0
+         fi
+@@ -54,4 +54,4 @@ spec:
+         fi
+         
+         echo "Modified components: $COMPONENTS"
+-        echo -n "$COMPONENTS" > $(results.components.path)
++        echo -n "$COMPONENTS" > $(results.components.path)
+\ No newline at end of file
+diff --git a/tekton/tasks/git-clone.yaml b/tekton/tasks/git-clone.yaml
+index 13510ca..60ca86b 100644
+--- a/tekton/tasks/git-clone.yaml
++++ b/tekton/tasks/git-clone.yaml
+@@ -36,6 +36,6 @@ spec:
+           echo "ERROR: Clone failed for $(params.url)"
+           exit 1
+         }
+-        COMMIT=$(git rev-parse HEAD)
+-        echo -n "$COMMIT" > $(results.commit.path)
+-        echo "SUCCESS: Checked out commit $COMMIT"
++        commit=$(git rev-parse HEAD)
++        echo -n "$commit" > $(results.commit.path)
++        echo "SUCCESS: Checked out commit $commit"
+diff --git a/tekton/tasks/notify-result.yaml b/tekton/tasks/notify-result.yaml
+index 9c025cd..7ca5624 100644
+--- a/tekton/tasks/notify-result.yaml
++++ b/tekton/tasks/notify-result.yaml
+@@ -5,13 +5,13 @@ metadata:
+ spec:
+   description: Log final pipeline result status
+   params:
+-    - name: STATUS
++    - name: status
+       type: string
+       description: Pipeline execution status
+-    - name: COMPONENT
++    - name: component
+       type: string
+       description: Component name being built
+-    - name: IMAGE
++    - name: image
+       type: string
+       description: Image name built
+   steps:
+@@ -19,18 +19,18 @@ spec:
+       image: alpine:3.24.1@sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6eec434943f8b
+       script: |
+         #!/bin/sh
+-        STATUS="$(params.STATUS)"
+-        COMPONENT="$(params.COMPONENT)"
+-        IMAGE="$(params.IMAGE)"
+-        if [ "$STATUS" = "Succeeded" ]; then
++        status="$(params.status)"
++        component="$(params.component)"
++        image="$(params.image)"
++        if [ "$status" = "Succeeded" ]; then
+           echo "========================================"
+-          echo "PIPELINE SUCCESS: $COMPONENT"
+-          echo "Image: $IMAGE deployed successfully"
++          echo "PIPELINE SUCCESS: $component"
++          echo "Image: $image deployed successfully"
+           echo "========================================"
+         else
+           echo "========================================"
+-          echo "PIPELINE FAILED: $COMPONENT"
+-          echo "Component $COMPONENT failed to build/deploy"
++          echo "PIPELINE FAILED: $component"
++          echo "Component $component failed to build/deploy"
+           echo "Check task logs for details"
+           echo "========================================"
+         fi
+diff --git a/tekton/tasks/patch-deployment.yaml b/tekton/tasks/patch-deployment.yaml
+index 335424b..dab2683 100644
+--- a/tekton/tasks/patch-deployment.yaml
++++ b/tekton/tasks/patch-deployment.yaml
+@@ -5,36 +5,40 @@ metadata:
+ spec:
+   description: Update deployment image using kubectl patch
+   params:
+-    - name: DEPLOYMENT_NAME
++    - name: deployment_name
+       type: string
+       description: Name of the deployment to patch
+-    - name: IMAGE
++    - name: image
+       type: string
+       description: New image to set
+-    - name: NAMESPACE
++    - name: namespace
+       type: string
+       default: default
+       description: Namespace of the deployment
+   steps:
+     - name: patch
+-      image: alpine:3.23
++      image: dtzar/helm-kubectl:4.2
+       script: |
+         #!/bin/sh
+         set -euo pipefail
+-        apk add --no-cache kubectl
+ 
+-        echo "Patching deployment $(params.DEPLOYMENT_NAME) with image $(params.IMAGE)"
+-        DEPLOYMENT="$(params.DEPLOYMENT_NAME)"
+-        NAMESPACE="$(params.NAMESPACE)"
+-        IMAGE="$(params.IMAGE)"
++        echo "Patching deployment $(params.deployment_name) with image $(params.image)"
++        deployment="$(params.deployment_name)"
++        namespace="$(params.namespace)"
++        image="$(params.image)"
+ 
+-        kubectl patch deployment "$DEPLOYMENT" \
+-          -n "$NAMESPACE" \
++        if ! kubectl get deployment "$deployment" -n "$namespace" > /dev/null 2>&1; then
++          echo "ERROR: Deployment $deployment not found in namespace $namespace"
++          exit 1
++        fi
++
++        kubectl patch deployment "$deployment" \
++          -n "$namespace" \
+           --type='strategic' \
+-          -p "{\"spec\":{\"template\":{\"spec\":{\"containers\":[{\"name\":\"app\",\"image\":\"$IMAGE\"}]}}}}" || {
+-          echo "ERROR: Failed to patch deployment $DEPLOYMENT"
++          -p "{\"spec\":{\"template\":{\"spec\":{\"containers\":[{\"name\":\"app\",\"image\":\"$image\"}]}}}" || {
++          echo "ERROR: Failed to patch deployment $deployment"
+           echo "Verify deployment exists and image format is valid"
+           exit 1
+-        } 
++        }
+ 
+-        echo "SUCCESS: Updated deployment $DEPLOYMENT to $IMAGE"
++        echo "SUCCESS: Updated deployment $deployment to $image"
+\ No newline at end of file
+diff --git a/tekton/triggers/github-listener.yaml b/tekton/triggers/github-listener.yaml
+index 87958e8..00df1d3 100644
+--- a/tekton/triggers/github-listener.yaml
++++ b/tekton/triggers/github-listener.yaml
+@@ -21,4 +21,4 @@ spec:
+       bindings:
+         - ref: github-push-binding
+       template:
+-        ref: github-push-template
++        ref: github-push-template
+\ No newline at end of file
+diff --git a/tekton/triggers/github-push-binding.yaml b/tekton/triggers/github-push-binding.yaml
+index 690b358..5ef1b43 100644
+--- a/tekton/triggers/github-push-binding.yaml
++++ b/tekton/triggers/github-push-binding.yaml
+@@ -5,9 +5,13 @@ metadata:
+   namespace: tekton-pipelines
+ spec:
+   params:
+-    - name: oldSha
++    - name: old_sha
+       value: $(body.before)
+-    - name: newSha
++    - name: new_sha
+       value: $(body.after)
+-    - name: gitUrl
+-      value: $(body.repository.clone_url)
+\ No newline at end of file
++    - name: git_url
++      value: $(body.repository.clone_url)
++    - name: image_prefix
++      value: "docker.io/lbcristaldo"   
++    - name: max_concurrent
++      value: "5"      
+\ No newline at end of file
+diff --git a/tekton/triggers/github-push-template.yaml b/tekton/triggers/github-push-template.yaml
+index b92f03e..984e88a 100644
+--- a/tekton/triggers/github-push-template.yaml
++++ b/tekton/triggers/github-push-template.yaml
+@@ -4,8 +4,18 @@ metadata:
+   name: github-push-template
+ spec:
+   params:
+-    - name: gitUrl
++    - name: git_url
+       description: URL of the Git repository.
++    - name: old_sha
++      description: Previous commit SHA.
++    - name: new_sha
++      description: New commit SHA.
++    - name: image_prefix
++      description: Docker registry prefix.
++    - name: max_concurrent
++      description: Max concurrent builds.
++    - name: pipeline_namespace
++      description: Namespace for PipelineRuns.
+   resourcetemplates:
+     - apiVersion: tekton.dev/v1beta1
+       kind: PipelineRun
+@@ -17,26 +27,28 @@ spec:
+         serviceAccountName: tekton-triggers-sa
+         pipelineRef:
+           name: process-changes
+-      params:
+-        - name: GIT_URL
+-          value: $(params.gitUrl)
+-        - name: OLD_SHA
+-          value: $(body.before)
+-        - name: NEW_SHA
+-          value: $(body.after)
+-        - name: IMAGE_PREFIX
+-          value: docker.io/lbcristaldo
+-        - name: MAX_CONCURRENT
+-          value: "2"
+-      workspaces:
+-        - name: source
+-          persistentVolumeClaim:
+-            claimName: buildpacks-pvc
+-          subPath: source
+-        - name: docker-config
+-          secret:
+-            secretName: dockerhub-secret
+-        - name: cache 
+-          persistentVolumeClaim:
+-            claimName: buildpacks-pvc
+-          subPath: cache
+\ No newline at end of file
++        params:
++          - name: git_url
++            value: $(params.git_url)
++          - name: old_sha
++            value: $(body.before)
++          - name: new_sha
++            value: $(body.after)
++          - name: image_prefix
++            value: $(params.image_prefix)
++          - name: max_concurrent
++            value: $(params.max_concurrent)
++          - name: pipeline_namespace
++            value: $(params.pipeline_namespace)
++        workspaces:
++          - name: source
++            persistentVolumeClaim:
++              claimName: buildpacks-pvc
++            subPath: source
++          - name: docker-config
++            secret:
++              secretName: dockerhub-secret
++          - name: cache
++            persistentVolumeClaim:
++              claimName: buildpacks-pvc
++            subPath: cache
+\ No newline at end of file

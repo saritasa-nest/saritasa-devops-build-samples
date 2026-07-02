@@ -9,11 +9,17 @@
 
 ## Architecture
 
-```
-GitHub Webhook -> EventListener -> TriggerBinding -> TriggerTemplate -> PipelineRun (process-changes)
-                                                                                     |
-                                                                                     v
-                                                                            detect-components -> create-pipelineruns -> [build-and-deploy per component]
+```mermaid
+flowchart TD
+    A[GitHub Webhook] --> B[EventListener]
+    B --> C[TriggerBinding]
+    C --> D[TriggerTemplate]
+    D --> E[PipelineRun: process-changes]
+    E --> F[Task: git-clone]
+    F --> G[Task: detect-components]
+    G --> H[Task: concurrency-check]
+    H --> I[Task: create-pipelineruns]
+    I --> J[PipelineRun: build-and-deploy]
 ```
 
 ## Phase 0: Local Environment Setup (Low RAM Systems - 8GB)

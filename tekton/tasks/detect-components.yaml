@@ -5,10 +5,10 @@ metadata:
 spec:
   description: Detect modified buildpack-ready components between commits
   params:
-    - name: OLD_SHA
+    - name: old_sha
       type: string
       description: Previous commit SHA
-    - name: NEW_SHA
+    - name: new_sha
       type: string
       description: New commit SHA
   workspaces:
@@ -24,13 +24,13 @@ spec:
         #!/bin/sh
         set -euo pipefail
         cd $(workspaces.source.path)
-        OLD_SHA="$(params.OLD_SHA)"
-        NEW_SHA="$(params.NEW_SHA)"
+        old_sha="$(params.old_sha)"
+        new_sha="$(params.new_sha)"
         
-        CHANGED_FILES=$(git diff --name-only "$OLD_SHA" "$NEW_SHA" 2>/dev/null || true)
+        CHANGED_FILES=$(git diff --name-only "$old_sha" "$new_sha" 2>/dev/null || true)
         
         if [ -z "$CHANGED_FILES" ]; then
-          echo "no-op: no changes detected between $OLD_SHA and $NEW_SHA"
+          echo "no-op: no changes detected between $old_sha and $new_sha"
           echo -n "no-op" > $(results.components.path)
           exit 0
         fi

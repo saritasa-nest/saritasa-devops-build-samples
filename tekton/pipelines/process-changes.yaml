@@ -5,24 +5,24 @@ metadata:
 spec:
   description: Process GitHub push webhook, detect changed components, and create one build PipelineRun per component.
   params:
-    - name: GIT_URL
+    - name: git_url
       type: string
       description: Git repository URL from GitHub webhook.
-    - name: OLD_SHA
+    - name: old_sha
       type: string
       description: Previous commit SHA.
-    - name: NEW_SHA
+    - name: new_sha
       type: string
       description: New commit SHA.
-    - name: IMAGE_PREFIX
+    - name: image_prefix
       type: string
       default: docker.io/lbcristaldo
       description: Docker Hub registry prefix.
-    - name: MAX_CONCURRENT
+    - name: max_concurrent
       type: string
       default: "2"
       description: Max concurrent component builds.
-    - name: PIPELINE_NAMESPACE
+    - name: pipeline_namespace
       type: string
       default: tekton-pipelines
       description: Namespace where component PipelineRuns are created.
@@ -40,19 +40,22 @@ spec:
         name: git-clone
       params:
         - name: url
-          value: $(params.GIT_URL)
+          value: $(params.git_url)
         - name: revision
-          value: $(params.NEW_SHA)
+          value: $(params.new_sha)
+      workspaces: 
+        - name: source
+          workspace: source
     - name: detect-components
       taskRef:
         name: detect-components
       runAfter:
         - clone-full
       params:
-        - name: OLD_SHA
-          value: $(params.OLD_SHA)
-        - name: NEW_SHA
-          value: $(params.NEW_SHA)
+        - name: old_sha
+          value: $(params.old_sha)
+        - name: new_sha
+          value: $(params.new_sha)
       workspaces:
         - name: source
           workspace: source
@@ -62,27 +65,27 @@ spec:
       runAfter:
         - detect-components
       params:
-        - name: MAX_CONCURRENT
-          value: $(params.MAX_CONCURRENT)
-        - name: NAMESPACE
-          value: $(params.PIPELINE_NAMESPACE)
+        - name: max_concurrent
+          value: $(params.max_concurrent)
+        - name: namespace
+          value: $(params.pipeline_namespace)
     - name: create-pipelineruns
       taskRef:
         name: create-pipelineruns
       runAfter:
         - check-concurrency
       params:
-        - name: COMPONENTS
+        - name: components
           value: $(tasks.detect-components.results.components)
-        - name: GIT_URL
-          value: $(params.GIT_URL)
-        - name: IMAGE_PREFIX
-          value: $(params.IMAGE_PREFIX)
-        - name: GIT_REVISION
-          value: $(params.NEW_SHA)
-        - name: NAMESPACE
-          value: $(params.PIPELINE_NAMESPACE)
-        - name: MAX_CONCURRENT
-          value: $(params.MAX_CONCURRENT)
-        - name: PIPELINE_NAMESPACE
-          value: $(params.PIPELINE_NAMESPACE)
+        - name: git_url
+          value: $(params.git_url)
+        - name: image_prefix
+          value: $(params.image_prefix)
+        - name: git_revision
+          value: $(params.new_sha)
+        - name: namespace
+          value: $(params.pipeline_namespace)
+        - name: max_concurrent
+          value: $(params.max_concurrent)
+        - name: pipeline_namespace
+          value: $(params.pipeline_namespace)

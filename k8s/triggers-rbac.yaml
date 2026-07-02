@@ -10,27 +10,61 @@ metadata:
   name: tekton-triggers-role
   namespace: tekton-pipelines
 rules:
-  - apiGroups: ["tekton.dev"]
-    resources: ["pipelineruns", "pipelines", "tasks"]
-    verbs: ["create", "get", "list", "watch", "update", "delete"]
-  - apiGroups: [""]
-    resources: ["pods", "pods/log"]
-    verbs: ["get", "list", "watch"]
-  - apiGroups: [""]
-    resources: ["secrets"]
-    verbs: ["get"]
-  - apiGroups: ["triggers.tekton.dev"]
-    resources: ["triggers", "triggertemplates", "eventlisteners", "interceptors"]
-    verbs: ["get", "list", "watch"]
+  - apiGroups:
+      - tekton.dev
+    resources:
+      - pipelineruns
+      - pipelines
+      - tasks
+    verbs:
+      - create
+      - get
+      - list
+      - watch
+      - update
+      - delete
+  - apiGroups:
+      - ""
+    resources:
+      - pods
+      - pods/log
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - ""
+    resources:
+      - secrets
+    verbs:
+      - get
+  - apiGroups:
+      - triggers.tekton.dev
+    resources:
+      - triggers
+      - triggertemplates
+      - triggerbindings
+      - eventlisteners
+      - interceptors
+    verbs:
+      - get
+      - list
+      - watch
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   name: tekton-triggers-cluster-role
 rules:
-  - apiGroups: ["triggers.tekton.dev"]
-    resources: ["clusterinterceptors", "clustertriggerbindings"]
-    verbs: ["get", "list", "watch"]
+  - apiGroups:
+      - triggers.tekton.dev
+    resources:
+      - clusterinterceptors
+      - clustertriggerbindings
+    verbs:
+      - get
+      - list
+      - watch
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
@@ -65,12 +99,25 @@ metadata:
   name: pipeline-role
   namespace: default
 rules:
-  - apiGroups: ["apps"]
-    resources: ["deployments"]
-    verbs: ["get", "list", "patch", "update"]
-  - apiGroups: [""]
-    resources: ["pods", "services"]
-    verbs: ["get", "list", "patch", "update"]
+  - apiGroups:
+      - apps
+    resources:
+      - deployments
+    verbs:
+      - get
+      - list
+      - patch
+      - update
+  - apiGroups:
+      - ""
+    resources:
+      - pods
+      - services
+    verbs:
+      - get
+      - list
+      - patch
+      - update
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding

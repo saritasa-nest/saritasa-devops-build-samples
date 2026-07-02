@@ -4,8 +4,19 @@ metadata:
   name: github-push-template
 spec:
   params:
-    - name: gitUrl
+    - name: git_url
       description: URL of the Git repository.
+    - name: old_sha
+      description: Previous commit SHA.
+    - name: new_sha
+      description: New commit SHA.
+    - name: image_prefix
+      description: Docker registry prefix.
+    - name: max_concurrent
+      description: Max concurrent builds.
+    - name: pipeline_namespace
+      description: Namespace for PipelineRuns.
+      default: tekton-pipelines
   resourcetemplates:
     - apiVersion: tekton.dev/v1beta1
       kind: PipelineRun
@@ -17,26 +28,28 @@ spec:
         serviceAccountName: tekton-triggers-sa
         pipelineRef:
           name: process-changes
-      params:
-        - name: GIT_URL
-          value: $(params.gitUrl)
-        - name: OLD_SHA
-          value: $(body.before)
-        - name: NEW_SHA
-          value: $(body.after)
-        - name: IMAGE_PREFIX
-          value: docker.io/lbcristaldo
-        - name: MAX_CONCURRENT
-          value: "2"
-      workspaces:
-        - name: source
-          persistentVolumeClaim:
-            claimName: buildpacks-pvc
-          subPath: source
-        - name: docker-config
-          secret:
-            secretName: dockerhub-secret
-        - name: cache 
-          persistentVolumeClaim:
-            claimName: buildpacks-pvc
-          subPath: cache
+        params:
+          - name: git_url
+            value: $(tt.params.git_url) 
+          - name: old_sha
+            value: $(tt.params.old_sha)
+          - name: new_sha
+            value: $(tt.params.new_sha)
+          - name: image_prefix
+            value: $(tt.params.image_prefix)
+          - name: max_concurrent
+            value: $(tt.params.max_concurrent)
+          - name: pipeline_namespace
+            value: $(tt.params.pipeline_namespace)
+        workspaces:
+          - name: source
+            persistentVolumeClaim:
+              claimName: buildpacks-pvc
+            subPath: source
+          - name: docker-config
+            secret:
+              secretName: dockerhub-secret
+          - name: cache
+            persistentVolumeClaim:
+              claimName: buildpacks-pvc
+            subPath: cache

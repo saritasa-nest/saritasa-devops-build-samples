@@ -5,36 +5,40 @@ metadata:
 spec:
   description: Update deployment image using kubectl patch
   params:
-    - name: DEPLOYMENT_NAME
+    - name: deployment_name
       type: string
       description: Name of the deployment to patch
-    - name: IMAGE
+    - name: image
       type: string
       description: New image to set
-    - name: NAMESPACE
+    - name: namespace
       type: string
       default: default
       description: Namespace of the deployment
   steps:
     - name: patch
-      image: alpine:3.23
+      image: dtzar/helm-kubectl:4.2
       script: |
         #!/bin/sh
         set -euo pipefail
-        apk add --no-cache kubectl
 
-        echo "Patching deployment $(params.DEPLOYMENT_NAME) with image $(params.IMAGE)"
-        DEPLOYMENT="$(params.DEPLOYMENT_NAME)"
-        NAMESPACE="$(params.NAMESPACE)"
-        IMAGE="$(params.IMAGE)"
+        echo "Patching deployment $(params.deployment_name) with image $(params.image)"
+        deployment="$(params.deployment_name)"
+        namespace="$(params.namespace)"
+        image="$(params.image)"
 
-        kubectl patch deployment "$DEPLOYMENT" \
-          -n "$NAMESPACE" \
+        if ! kubectl get deployment "$deployment" -n "$namespace" > /dev/null 2>&1; then
+          echo "ERROR: Deployment $deployment not found in namespace $namespace"
+          exit 1
+        fi
+
+        kubectl patch deployment "$deployment" \
+          -n "$namespace" \
           --type='strategic' \
-          -p "{\"spec\":{\"template\":{\"spec\":{\"containers\":[{\"name\":\"app\",\"image\":\"$IMAGE\"}]}}}}" || {
-          echo "ERROR: Failed to patch deployment $DEPLOYMENT"
+          -p "{\"spec\":{\"template\":{\"spec\":{\"containers\":[{\"name\":\"app\",\"image\":\"$image\"}]}}}}" || {
+          echo "ERROR: Failed to patch deployment $deployment"
           echo "Verify deployment exists and image format is valid"
           exit 1
-        } 
+        }
 
-        echo "SUCCESS: Updated deployment $DEPLOYMENT to $IMAGE"
+        echo "SUCCESS: Updated deployment $deployment to $image"

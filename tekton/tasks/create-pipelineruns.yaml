@@ -5,100 +5,100 @@ metadata:
 spec:
   description: Create one build-and-deploy PipelineRun per modified component.
   params:
-    - name: COMPONENTS
+    - name: components
       type: string
       description: Space-separated list of component paths.
-    - name: GIT_URL
+    - name: git_url
       type: string
       description: Git repository URL to build.
-    - name: IMAGE_PREFIX
+    - name: image_prefix
       type: string
       default: docker.io/lbcristaldo
       description: Docker Hub registry prefix for images.
-    - name: GIT_REVISION
+    - name: git_revision
       type: string
       default: main
       description: Git revision for builds.
-    - name: NAMESPACE
+    - name: namespace
       type: string
       default: tekton-pipelines
       description: Namespace where component PipelineRuns are created.
-    - name: SERVICE_ACCOUNT_NAME
+    - name: service_account_name
       type: string
       default: tekton-triggers-sa
       description: ServiceAccount used by component PipelineRuns.
-    - name: MAX_CONCURRENT
+    - name: max_concurrent
       type: string
       default: "2"
       description: Maximum concurrent component builds.
-    - name: PIPELINE_NAMESPACE
+    - name: pipeline_namespace
       type: string
       default: tekton-pipelines
       description: Namespace used by component PipelineRuns for concurrency checks.
   steps:
     - name: create-pipelineruns
-      image: bitnami/kubectl:latest
+      image: dtzar/helm-kubectl:4.2
       script: |
         #!/bin/sh
         set -eu
 
-        COMPONENTS="$(params.COMPONENTS)"
-        GIT_URL="$(params.GIT_URL)"
-        IMAGE_PREFIX="$(params.IMAGE_PREFIX)"
-        GIT_REVISION="$(params.GIT_REVISION)"
-        NAMESPACE="$(params.NAMESPACE)"
-        SERVICE_ACCOUNT_NAME="$(params.SERVICE_ACCOUNT_NAME)"
-        MAX_CONCURRENT="$(params.MAX_CONCURRENT)"
-        PIPELINE_NAMESPACE="$(params.PIPELINE_NAMESPACE)"
+        components="$(params.components)"
+        git_url="$(params.git_url)"
+        image_prefix="$(params.image_prefix)"
+        git_revision="$(params.git_revision)"
+        namespace="$(params.namespace)"
+        service_account_name="$(params.service_account_name)"
+        max_concurrent="$(params.max_concurrent)"
+        pipeline_namespace="$(params.pipeline_namespace)"
 
-        if [ -z "$GIT_URL" ]; then
-          echo "ERROR: GIT_URL is required"
+        if [ -z "$git_url" ]; then
+          echo "ERROR: git_url is required"
           exit 1
         fi
 
-        if [ "$COMPONENTS" = "no-op" ] || [ -z "$COMPONENTS" ]; then
+        if [ "$components" = "no-op" ] || [ -z "$components" ]; then
           echo "No buildpack-ready components to build; skipping child PipelineRuns"
           exit 0
         fi
 
         TIMESTAMP=$(date +%s)
 
-        for component in $COMPONENTS; do
-          COMPONENT_NAME=$(printf '%s' "$component" | tr '/' '-')
-          IMAGE="${IMAGE_PREFIX}/${COMPONENT_NAME}:${GIT_REVISION}"
-          DEPLOYMENT="${COMPONENT_NAME}-app"
+        for component in $components; do
+          component_name=$(printf '%s' "$component" | tr '/' '-')
+          image="${image_prefix}/${component_name}:${git_revision}"
+          deployment="${component_name}-app"
 
-          echo "Creating one PipelineRun for component $component -> $IMAGE -> $NAMESPACE/$DEPLOYMENT"
+          echo "Creating one PipelineRun for component $component -> $image -> $namespace/$deployment"
 
-          cat <<EOF | kubectl apply -n "$NAMESPACE" -f -
+          cat <<EOF | kubectl apply -n "$namespace" -f -
             apiVersion: tekton.dev/v1beta1
             kind: PipelineRun
             metadata:
-              generateName: build-${COMPONENT_NAME}-
+              generateName: build-${component_name}-
             spec:
-              serviceAccountName: ${SERVICE_ACCOUNT_NAME}
+              serviceAccountName: ${service_account_name}
               pipelineRef:
                 name: build-and-deploy
               params:
-                - name: GIT_URL
-                  value: "${GIT_URL}"
-                - name: GIT_REVISION
-                  value: "${GIT_REVISION}"
-                - name: COMPONENT_PATH
+                - name: git_url
+                  value: "${git_url}"
+                - name: git_revision
+                  value: "${git_revision}"
+                - name: component_path
                   value: "${component}"
-                - name: IMAGE
-                  value: "${IMAGE}"
-                - name: DEPLOYMENT_NAME
-                  value: "${DEPLOYMENT}"
-                - name: NAMESPACE
-                  value: "${NAMESPACE}"
-                - name: MAX_CONCURRENT
-                  value: "${MAX_CONCURRENT}"
-                - name: PIPELINE_NAMESPACE
-                  value: "${PIPELINE_NAMESPACE}"
+                - name: image
+                  value: "${image}"
+                - name: deployment_name
+                  value: "${deployment}"
+                - name: namespace
+                  value: "${namespace}"
+                - name: max_concurrent
+                  value: "${max_concurrent}"
+                - name: pipeline_namespace
+                  value: "${pipeline_namespace}"
               workspaces:
                 - name: source
-                  persistentvolumeClaim:
+                  persistentVolumeClaim:
                     claimName: buildpacks-pvc
                   subPath: source
                 - name: docker-config
@@ -113,4 +113,4 @@ spec:
           echo "PipelineRun for $component created"
         done
 
-        echo "SUCCESS: Created one PipelineRun per modified component with max concurrency $MAX_CONCURRENT"
+        echo "SUCCESS: Created one PipelineRun per modified component with max concurrency $max_concurrent"

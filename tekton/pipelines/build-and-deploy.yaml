@@ -5,32 +5,32 @@ metadata:
 spec:
   description: Clone repo, build with Paketo, and deploy to Kubernetes.
   params:
-    - name: GIT_URL
+    - name: git_url
       type: string
       description: Git repository URL to clone.
-    - name: GIT_REVISION
+    - name: git_revision
       type: string
       default: main
       description: Git revision to checkout.
-    - name: COMPONENT_PATH
+    - name: component_path
       type: string
       default: ""
       description: Subdirectory path within repo, for example nodejs/npm.
-    - name: IMAGE
+    - name: image
       type: string
       description: Full image reference to publish, for example docker.io/lbcristaldo/component:sha-abc123.
-    - name: DEPLOYMENT_NAME
+    - name: deployment_name
       type: string
       description: Name of the deployment to update.
-    - name: NAMESPACE
+    - name: namespace
       type: string
       default: default
       description: Target namespace for deployment.
-    - name: MAX_CONCURRENT
+    - name: max_concurrent
       type: string
       default: "2"
       description: Max concurrent component builds.
-    - name: PIPELINE_NAMESPACE
+    - name: pipeline_namespace
       type: string
       default: tekton-pipelines
       description: Namespace where this PipelineRun is running.
@@ -47,10 +47,10 @@ spec:
       taskRef:
         name: concurrency-check
       params:
-        - name: MAX_CONCURRENT
-          value: $(params.MAX_CONCURRENT)
-        - name: NAMESPACE
-          value: $(params.PIPELINE_NAMESPACE)
+        - name: max_concurrent
+          value: $(params.max_concurrent)
+        - name: namespace
+          value: $(params.pipeline_namespace)
     - name: clone
       taskRef:
         name: git-clone
@@ -58,11 +58,11 @@ spec:
         - concurrency-check
       params:
         - name: url
-          value: $(params.GIT_URL)
+          value: $(params.git_url)
         - name: revision
-          value: $(params.GIT_REVISION)
+          value: $(params.git_revision)
         - name: subdirectory
-          value: $(params.COMPONENT_PATH)
+          value: $(params.component_path)
       workspaces:
         - name: source
           workspace: source
@@ -72,10 +72,10 @@ spec:
       runAfter:
         - clone
       params:
-        - name: IMAGE
-          value: $(params.IMAGE)
-        - name: COMPONENT_PATH
-          value: $(params.COMPONENT_PATH)
+        - name: image
+          value: $(params.image)
+        - name: component_path
+          value: $(params.component_path)
       workspaces:
         - name: source
           workspace: source
@@ -89,9 +89,9 @@ spec:
       runAfter:
         - build
       params:
-        - name: DEPLOYMENT_NAME
-          value: $(params.DEPLOYMENT_NAME)
-        - name: IMAGE
-          value: $(params.IMAGE)
-        - name: NAMESPACE
-          value: $(params.NAMESPACE)
+        - name: deployment_name
+          value: $(params.deployment_name)
+        - name: image
+          value: $(params.image)
+        - name: namespace
+          value: $(params.namespace)
