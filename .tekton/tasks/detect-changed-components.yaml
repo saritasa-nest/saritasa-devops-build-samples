@@ -11,6 +11,10 @@ spec:
       description: Optional base commit SHA to diff from (for example, the push "before" SHA)
       type: string
       default: ""
+    - name: source-directory
+      description: Subdirectory to contain source code
+      type: string
+      default: ""
 
   workspaces:
     - name: source
@@ -24,7 +28,7 @@ spec:
   steps:
     - name: detect-change
       image: alpine/git:latest
-      workingDir: $(workspaces.source.path)
+      workingDir: $(workspaces.source.path)/$(params.source-directory)
       script: |
         #!/bin/sh
         set -eu

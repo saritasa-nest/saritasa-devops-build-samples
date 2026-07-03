@@ -42,6 +42,8 @@ spec:
           value: "0"
         - name: deleteExisting
           value: "true"
+        - name: subdirectory
+          value: "$(params.revision)"
       workspaces:
         - name: output
           workspace: source
@@ -56,6 +58,8 @@ spec:
       params:
         - name: base-revision
           value: "$(params.base-revision)"
+        - name: source-directory
+          value: "$(params.revision)"
       workspaces:
         - name: source
           workspace: source
@@ -89,6 +93,8 @@ spec:
           value: "saritasa-devops-project"
         - name: image-repository
           value: "$(params.image-repository)"
+        - name: source-directory
+          value: "$(params.revision)"
       workspaces:
         - name: source
           workspace: source
