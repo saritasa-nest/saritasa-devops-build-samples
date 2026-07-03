@@ -30,9 +30,18 @@ spec:
       description: Git credentials
     
   tasks:
+    - name: create-tekton-resources
+      taskRef:
+        name: create-tekton-resources
+      workspaces:
+        - name: source
+          workspace: source
+
     - name: fetch-repository
       taskRef:
         name: git-clone
+      runAfter:
+        - create-tekton-resources
       params:
         - name: url
           value: "$(params.repo-url)"
@@ -64,20 +73,11 @@ spec:
         - name: source
           workspace: source
 
-    - name: create-tekton-resources
-      taskRef:
-        name: create-tekton-resources
-      runAfter:
-        - detect-changed-components
-      workspaces:
-        - name: source
-          workspace: source
-
     - name: build-deploy-changed-components
       taskRef:
         name: trigger-components-build
       runAfter:
-        - create-tekton-resources
+        - detect-changed-components
       params:
         - name: repo-url
           value: "$(params.repo-url)"
