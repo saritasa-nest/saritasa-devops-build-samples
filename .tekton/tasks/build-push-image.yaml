@@ -13,6 +13,10 @@ spec:
       description: Tag of the image to be built by Paketo
     - name: component-dir
       description: Path of the component directory with changes
+    - name: source-directory
+      description: Subdirectory to contain source code
+      type: string
+      default: ""
 
   workspaces:
     - name: source
@@ -38,7 +42,7 @@ spec:
   steps:
     - name: build-image
       image: buildpacksio/pack:base
-      workingDir: $(workspaces.source.path)
+      workingDir: $(workspaces.source.path)/$(params.source-directory)
       env:
         - name: DOCKER_HOST
           value: unix:///var/run/docker.sock
@@ -50,7 +54,7 @@ spec:
         #!/bin/bash
         set -eu
 
-        ROOT="$(workspaces.source.path)"
+        ROOT="$(workspaces.source.path)/$(params.source-directory)"
         COMPONENT_DIR="$(params.component-dir)"
         INPUT="${COMPONENT_DIR#./}"
         INPUT="${INPUT%/}"

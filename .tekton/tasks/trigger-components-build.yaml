@@ -61,6 +61,7 @@ spec:
         NAMESPACE="$(params.pipeline-namespace)"
         REPO_URL="$(params.repo-url)"
         IMAGE_REPOSITORY="$(params.image-repository)"
+        SOURCE_DIR="$(params.source-directory)"
 
         # Convert space-separated input into a Bash array
         read -r -a COMPONENTS <<< "$COMPONENTS_RAW"
@@ -132,6 +133,7 @@ spec:
               | .spec.params[] |= (select(.name == \"project-dir\") .value = \"$component\") 
               | .spec.params[] |= (select(.name == \"image-url\") .value = \"$IMAGE_REPOSITORY/$component_name\") 
               | .spec.params[] |= (select(.name == \"image-tag\") .value = \"$COMMIT_SHA_SHORT\") 
+              | .spec.params[] |= (select(.name == \"source-directory\") .value = \"$SOURCE_DIR\") 
               | .spec.params[] |= (select(.name == \"component-name\") .value = \"$component_name\")" \
             "$(params.template-filepath)" | kubectl apply -f -
 

@@ -27,6 +27,8 @@ spec:
       value: "{{ image_tag }}"
     - name: component-name
       value: "{{ component_name }}"
+    - name: source-directory
+      value: "{{ source_directory }}"
 
   pipelineRef:
     name: component-build-pipeline

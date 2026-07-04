@@ -30,6 +30,10 @@ spec:
       type: string
       description: Number of replicas for the deployment
       default: "1"
+    - name: source-directory
+      type: string
+      description: A subdirectory of source workspace to contain recently checked-out source code
+      default: ""
 
   workspaces:
     - name: source
@@ -48,6 +52,8 @@ spec:
           value: $(params.image-tag)
         - name: component-dir
           value: $(params.project-dir)
+        - name: source-directory
+          value: $(params.source-directory)
       workspaces:
         - name: source
           workspace: source
