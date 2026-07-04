@@ -36,10 +36,12 @@ spec:
         git config --global --add safe.directory .
 
         base_revision="$(params.base-revision)"
+        null_sha="0000000000000000000000000000000000000000"
         diff_from=""
 
         # Prefer an explicit base revision from the trigger event when provided.
-        if [ -n "$base_revision" ] && git rev-parse --verify --quiet "$base_revision^{commit}" >/dev/null; then
+        # Ignore all-zero SHA used by Git providers to represent an empty "before" revision.
+        if [ -n "$base_revision" ] && [ "$base_revision" != "$null_sha" ] && git rev-parse --verify --quiet "$base_revision^{commit}" >/dev/null; then
           diff_from="$base_revision"
         else
           # Fall back to the merge-base with origin/HEAD to include multi-commit branch pushes.
