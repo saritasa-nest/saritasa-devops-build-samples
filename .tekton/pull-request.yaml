@@ -23,7 +23,7 @@ spec:
     - name: revision
       value: "{{ revision }}"
     - name: base-revision
-      value: "{{ before_sha }}"
+      value: "{{ body.before }}"
     # This value needs updating to match your image repository
     # Its value should have this pattern: "<registry>/<repository>"
     - name: image-repository
