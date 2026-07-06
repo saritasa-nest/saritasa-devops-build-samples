@@ -1,0 +1,49 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: clean-up
+  namespace: saritasa-devops-project
+spec:
+  description: A task to clean up resources spun up from this PipelineRun and its descending PipelineRuns
+
+  params:
+    - name: source-directory
+      description: Subdirectory to contain source code
+      type: string
+      default: ""
+    - name: github-webhook-secret-name
+      description: Name of Github webhook's K8S secret
+      type: string
+
+  workspaces:
+    - name: source
+      description: Workspace containing this repository's source code
+
+  steps:
+    - name: clean-up-source
+      image: bash/5.1.16
+      script: |
+        #!/bin/bash
+        set -eu
+
+        SOURCE_DIR="$(workspaces.source.path)/$(params.source-directory)"
+
+        echo "Cleaning up source workspace..."
+
+        if [ -d "$SOURCE_DIR" ]; then
+          rm -rf "$SOURCE_DIR"/*
+        else
+          rm -rf "$(workspaces.source.path)"/*
+        fi
+
+    - name: clean-up-pipeline-resources
+      image: alpine/k8s:1.33.13
+      script: |
+        #!/bin/bash
+        set -eu
+
+        # Github webhook secret
+        echo "Removing Github webhook secret..."
+        kubectl delete secret "$(params.github-webhook-secret-name)" --ignore-not-found -n $(kubectl get repository -A -o jsonpath='{.items[0].metadata.namespace}')
+
+        
