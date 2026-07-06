@@ -16,10 +16,20 @@ metadata:
     # the changed-files list below — a new component, or a component moved to
     # a new folder, needs no change here.
     #
-    # component-delivery / buildpacks / collect-and-dispatch are pre-applied
-    # to the cluster (by saritasa-devops-build-samples-k8s's setup.sh), not
-    # fetched from this repo — this PipelineRun only needs the dispatch
-    # Pipeline itself, also pre-applied. See that repo's README.md.
+    # PAC resolves objects for a PipelineRun it creates from .tekton/ ONLY
+    # from local files in .tekton/ or from these task/pipeline URL
+    # annotations — it never falls back to looking up a same-named object
+    # already applied to the cluster (confirmed the hard way: pipelineRef
+    # alone failed with "cannot find referenced pipeline dispatch"). So the
+    # dispatch Pipeline and the collect-and-dispatch Task it references both
+    # need to be fetchable here, even though they're also pre-applied to the
+    # cluster by saritasa-devops-build-samples-k8s's setup.sh (that pre-apply
+    # is for the PipelineRuns collect-and-dispatch creates directly via
+    # `kubectl create`, bypassing PAC entirely — those aren't subject to this
+    # local/annotation-only resolution rule, so they resolve
+    # component-delivery/buildpacks from the cluster normally).
+    pipelinesascode.tekton.dev/pipeline: "[https://raw.githubusercontent.com/dknhat2000/saritasa-devops-build-samples-k8s/main/pipelines/dispatch.yaml]"
+    pipelinesascode.tekton.dev/task:     "[https://raw.githubusercontent.com/dknhat2000/saritasa-devops-build-samples-k8s/main/tasks/collect-and-dispatch.yaml]"
 spec:
   timeouts:
     pipeline: "5m0s"
