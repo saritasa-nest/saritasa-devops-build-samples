@@ -1,0 +1,66 @@
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  generateName: dispatch-
+  namespace: tekton
+  labels:
+    app.kubernetes.io/part-of: saritasa-cicd
+    saritasa.dev/pipeline-role: dispatch
+  annotations:
+    pipelinesascode.tekton.dev/on-event:        "[push, pull_request]"
+    pipelinesascode.tekton.dev/on-target-branch: "[main, feat/*]"
+    pipelinesascode.tekton.dev/max-keep-runs:   "5"
+    # No on-path-change: this is the ONE trigger for every push/PR, regardless
+    # of which or how many components changed. dispatch (see the
+    # saritasa-devops-build-samples-k8s repo) clones the repo and diffs it
+    # itself to decide what needs building — a new component, or a component
+    # moved to a new folder, needs no change here.
+    #
+    # PAC resolves objects for a PipelineRun it creates from .tekton/ ONLY
+    # from local files in .tekton/ or from these task/pipeline URL
+    # annotations — it never falls back to looking up a same-named object
+    # already applied to the cluster (confirmed the hard way: pipelineRef
+    # alone failed with "cannot find referenced pipeline dispatch"). So the
+    # dispatch Pipeline and the collect-and-dispatch Task it references both
+    # need to be fetchable here, even though they're also pre-applied to the
+    # cluster by saritasa-devops-build-samples-k8s's setup.sh (that pre-apply
+    # is for the PipelineRuns collect-and-dispatch creates directly via
+    # `kubectl create`, bypassing PAC entirely — those aren't subject to this
+    # local/annotation-only resolution rule, so they resolve
+    # component-delivery/buildpacks from the cluster normally).
+    pipelinesascode.tekton.dev/pipeline: "[https://raw.githubusercontent.com/dknhat2000/saritasa-devops-build-samples-k8s/main/pipelines/dispatch.yaml]"
+    pipelinesascode.tekton.dev/task:     "[https://raw.githubusercontent.com/dknhat2000/saritasa-devops-build-samples-k8s/main/tasks/collect-and-dispatch.yaml, https://raw.githubusercontent.com/tektoncd/catalog/main/task/git-clone/0.9/git-clone.yaml]"
+spec:
+  timeouts:
+    pipeline: "5m0s"
+  pipelineRef:
+    name: dispatch
+  taskRunTemplate:
+    serviceAccountName: pipeline-sa
+  params:
+    - name: commit-sha
+      value: "{{ revision }}"
+    - name: repo-url
+      value: "{{ repo_url }}"
+    # target_branch / event_type come straight from the webhook payload
+    # (PAC's standard event fields), unlike files.all/{{ cel: ... }} which
+    # goes through a changed-files fetch that reliably returned empty on this
+    # deployed PAC version — see pipelines/dispatch.yaml's annotation in the
+    # k8s repo for what was tried and why it was dropped.
+    - name: target-branch
+      value: "{{ target_branch }}"
+    - name: event-type
+      value: "{{ event_type }}"
+    - name: github-user
+      value: dknhat2000
+  workspaces:
+    - name: source
+      volumeClaimTemplate:
+        spec:
+          accessModes: [ReadWriteOnce]
+          resources:
+            requests:
+              storage: 512Mi
+    - name: git-credentials
+      secret:
+        secretName: git-credentials

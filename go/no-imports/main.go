@@ -22,5 +22,9 @@ func main() {
 		fmt.Fprint(w, INDEX)
 	})
 
+	http.HandleFunc("/healthz", func(w http.ResponseWriter, req *http.Request) {
+		fmt.Fprint(w, "ok")
+	})
+
 	log.Fatal(http.ListenAndServe(":"+os.Getenv("PORT"), nil))
 }

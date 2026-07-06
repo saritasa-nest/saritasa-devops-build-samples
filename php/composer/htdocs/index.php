@@ -13,7 +13,8 @@
   $dotenv = Dotenv\Dotenv::createImmutable(__DIR__);
   $dotenv->load();
   $projectName = $_ENV['PROJECT_NAME'];
-  echo "<p style='text-align: center'>Powered By " . $projectName . " Buildpacks</p>"
+  echo "<p style='text-align: center'>Powered By " . $projectName . " Buildpacks</p>";
+  echo Hello World
 ?>
   </body>
 </html>

@@ -11,3 +11,5 @@
 ## Viewing
 
 `curl http://localhost:8080`
+
+# Resource scarcity control test

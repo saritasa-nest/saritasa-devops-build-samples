@@ -25,6 +25,10 @@ app.get("/actuator/health", (request, response) => {
   response.json({ status: "UP" });
 });
 
+app.get("/version", (request, response) => {
+  response.json({ name: "nodejs-npm", runtime: process.version });
+});
+
 app.listen(port, () => {
   console.log(`App listening on port ${port}`);
 });
