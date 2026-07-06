@@ -1,0 +1,41 @@
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  generateName: dispatch-
+  namespace: tekton
+  labels:
+    app.kubernetes.io/part-of: saritasa-cicd
+    saritasa.dev/pipeline-role: dispatch
+  annotations:
+    pipelinesascode.tekton.dev/on-event:        "[push, pull_request]"
+    pipelinesascode.tekton.dev/on-target-branch: "[main, feat/*]"
+    pipelinesascode.tekton.dev/max-keep-runs:   "5"
+    # No on-path-change: this is the ONE trigger for every push/PR, regardless
+    # of which or how many components changed. dispatch (see the
+    # saritasa-devops-build-samples-k8s repo) decides what needs building from
+    # the changed-files list below — a new component, or a component moved to
+    # a new folder, needs no change here.
+    #
+    # component-delivery / buildpacks / collect-and-dispatch are pre-applied
+    # to the cluster (by saritasa-devops-build-samples-k8s's setup.sh), not
+    # fetched from this repo — this PipelineRun only needs the dispatch
+    # Pipeline itself, also pre-applied. See that repo's README.md.
+spec:
+  timeouts:
+    pipeline: "5m0s"
+  pipelineRef:
+    name: dispatch
+  taskRunTemplate:
+    serviceAccountName: pipeline-sa
+  params:
+    - name: changed-files
+      # Computed by PAC itself from the webhook payload — the same job the
+      # old raw-Triggers GitHub interceptor's addChangedFiles feature did.
+      # No git diff, no clone, needed in the dispatch Pipeline at all.
+      value: "{{ cel: files.all.join(\",\") }}"
+    - name: commit-sha
+      value: "{{ revision }}"
+    - name: repo-url
+      value: "{{ repo_url }}"
+    - name: github-user
+      value: dknhat2000
