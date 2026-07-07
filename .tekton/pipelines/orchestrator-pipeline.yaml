@@ -104,20 +104,20 @@ spec:
         - name: source
           workspace: source
 
-  finally:
-    - name: clean-up
-      displayName: "Clean up resources"
-      taskRef:
-        name: clean-up
-      params:
-        - name: source-directory
-          value: "$(params.revision)"
-        - name: github-webhook-secret-name
-          value: "$(params.github-webhook-secret-name)"
-        - name: pipeline-role
-          value: "orchestrator"
-        - name: revision
-          value: "$(params.revision)"
-      workspaces:
-        - name: source
-          workspace: source
+  # finally:
+  #   - name: clean-up
+  #     displayName: "Clean up resources"
+  #     taskRef:
+  #       name: clean-up
+  #     params:
+  #       - name: source-directory
+  #         value: "$(params.revision)"
+  #       - name: github-webhook-secret-name
+  #         value: "$(params.github-webhook-secret-name)"
+  #       - name: pipeline-role
+  #         value: "orchestrator"
+  #       - name: revision
+  #         value: "$(params.revision)"
+  #     workspaces:
+  #       - name: source
+  #         workspace: source
