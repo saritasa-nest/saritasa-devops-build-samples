@@ -27,47 +27,52 @@ spec:
   steps:
     - name: clean-up-source-directory
       image: alpine/k8s:1.33.13
-      when:
-        input: "$(params.pipeline-role)"
-        operator: in
-        values: ["component"]
+      # when:
+      #   input: "$(params.pipeline-role)"
+      #   operator: in
+      #   values: ["component"]
       script: |
         #!/bin/bash
         set -eu
 
-        SOURCE_DIR="$(workspaces.source.path)/$(params.source-directory)"
+        if [ "$(params.pipeline-role)" = "component" ]; then
+          SOURCE_DIR="$(workspaces.source.path)/$(params.source-directory)"
 
-        RUNNING_BUILDS=$(kubectl get pipelineruns -n $PARENT_NAMESPACE \
-          -l tekton.dev/pipeline=build-deploy-single-component \
-          -o json 2>/dev/null \
-          | jq --arg revision "$REVISION" '.items[] | select(.metadata.annotations["saritasa.tekton.dev/commit-sha"] == $revision) | select(.status.conditions[0].reason == "Running") | .metadata.name' \
-          | wc -l)
+          RUNNING_BUILDS=$(kubectl get pipelineruns -n "$(kubectl get repository -A -o jsonpath='{.items[0].metadata.namespace}')" \
+            -l tekton.dev/pipeline=build-deploy-single-component \
+            -o json 2>/dev/null \
+            | jq --arg revision "$(params.revision)" '.items[] | select(.metadata.annotations["saritasa.tekton.dev/commit-sha"] == $revision) | select(.status.conditions[0].reason == "Running") | .metadata.name' \
+            | wc -l)
 
-        if [ "$RUNNING_BUILDS" -ne 1 ]; then
-          echo "There are still running builds, skipping clean up."
-          exit 0
-        fi
+          if [ "$RUNNING_BUILDS" -ne 1 ]; then
+            echo "There are still running builds, skipping clean up."
+            exit 0
+          fi
 
-        echo "Cleaning up source workspace..."
+          echo "Cleaning up source workspace..."
 
-        if [ -d "$SOURCE_DIR" ]; then
-          rm -rf "$SOURCE_DIR"/*
-        else
-          rm -rf "$(workspaces.source.path)"/*
+          if [ -d "$SOURCE_DIR" ]; then
+            rm -rf "$SOURCE_DIR"/*
+          else
+            rm -rf "$(workspaces.source.path)"/*
+          fi
         fi
 
     - name: clean-up-webhook-secret
       image: alpine/k8s:1.33.13
-      when:
-        input: "$(params.pipeline-role)"
-        operator: in
-        values: ["orchestrator"]
+      # when:
+      #   input: "$(params.pipeline-role)"
+      #   operator: in
+      #   values: ["orchestrator"]
       script: |
         #!/bin/bash
         set -eu
 
-        # Github webhook secret
-        echo "Removing Github webhook secret..."
-        kubectl delete secret "$(params.github-webhook-secret-name)" --ignore-not-found -n $(kubectl get repository -A -o jsonpath='{.items[0].metadata.namespace}')
+        
+        if [ "$(params.pipeline-role)" = "orchestrator" ]; then
+          # Github webhook secret
+          echo "Removing Github webhook secret..."
+          kubectl delete secret "$(params.github-webhook-secret-name)" --ignore-not-found -n $(kubectl get repository -A -o jsonpath='{.items[0].metadata.namespace}')
+        fi
 
         

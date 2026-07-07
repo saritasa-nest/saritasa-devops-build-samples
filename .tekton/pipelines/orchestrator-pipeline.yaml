@@ -116,6 +116,8 @@ spec:
           value: "$(params.github-webhook-secret-name)"
         - name: pipeline-role
           value: "orchestrator"
+        - name: revision
+          value: "$(params.revision)"
       workspaces:
         - name: source
           workspace: source
