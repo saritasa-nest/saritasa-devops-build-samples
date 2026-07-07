@@ -22,6 +22,10 @@ spec:
       description: Docker image repository URL
       type: string
       default: "docker.io/library"
+    - name: component-pipeline-max-concurrent-build
+      description: Maximum concurrent build for component pipeline
+      type: string
+      default: "3"
 
   workspaces:
     - name: source
@@ -30,18 +34,9 @@ spec:
       description: Git credentials
     
   tasks:
-    - name: create-tekton-resources
-      taskRef:
-        name: create-tekton-resources
-      workspaces:
-        - name: source
-          workspace: source
-
     - name: fetch-repository
       taskRef:
         name: git-clone
-      runAfter:
-        - create-tekton-resources
       params:
         - name: url
           value: "$(params.repo-url)"
@@ -58,6 +53,15 @@ spec:
           workspace: source
         - name: basic-auth
           workspace: basic-auth
+
+    - name: create-tekton-resources
+      taskRef:
+        name: create-tekton-resources
+      runAfter:
+        - fetch-repository
+      workspaces:
+        - name: source
+          workspace: source
 
     - name: detect-changed-components
       taskRef:
@@ -78,6 +82,7 @@ spec:
         name: trigger-components-build
       runAfter:
         - detect-changed-components
+        - create-tekton-resources
       params:
         - name: repo-url
           value: "$(params.repo-url)"
@@ -86,7 +91,7 @@ spec:
         - name: changed-components
           value: "$(tasks.detect-changed-components.results.changed-dirs)"
         - name: max-concurrent-builds
-          value: "3"
+          value: "$(params.component-pipeline-max-concurrent-build)"
         - name: template-filepath
           value: ".tekton/templates/component-build-run-template.yaml"
         - name: pipeline-namespace
@@ -99,16 +104,18 @@ spec:
         - name: source
           workspace: source
 
-  # finally:
-  #   - name: clean-up
-  #     displayName: "Clean up resources"
-  #     taskRef:
-  #       name: clean-up
-  #     params:
-  #       - name: source-directory
-  #         value: "$(params.revision)"
-  #       - name: github-webhook-secret-name
-  #         value: "$(params.github-webhook-secret-name)"
-  #     workspaces:
-  #       - name: source
-  #         workspace: source
+  finally:
+    - name: clean-up
+      displayName: "Clean up resources"
+      taskRef:
+        name: clean-up
+      params:
+        - name: source-directory
+          value: "$(params.revision)"
+        - name: github-webhook-secret-name
+          value: "$(params.github-webhook-secret-name)"
+        - name: pipeline-role
+          value: "orchestrator"
+      workspaces:
+        - name: source
+          workspace: source

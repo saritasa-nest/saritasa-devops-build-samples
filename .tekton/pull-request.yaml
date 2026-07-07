@@ -24,6 +24,8 @@ spec:
       value: "{{ revision }}"
     - name: base-revision
       value: "{{ body.before }}"
+    - name: component-pipeline-max-concurrent-build
+      value: "3"
     # A secret containing the Github webhook token
     # Its value is a generated name for each different run
     - name: github-webhook-secret-name

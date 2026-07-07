@@ -75,3 +75,16 @@ spec:
         - name: namespace
           value: $(tasks.build-and-push-component.results.component-name)
       
+  finally:
+    - name: clean-up
+      displayName: "Clean up resources"
+      taskRef:
+        name: clean-up
+      params:
+        - name: source-directory
+          value: "$(params.revision)"
+        - name: pipeline-role
+          value: "component"
+      workspaces:
+        - name: source
+          workspace: source
