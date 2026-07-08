@@ -35,6 +35,7 @@ spec:
     
   tasks:
     - name: fetch-repository
+      displayName: Git clone source repository
       taskRef:
         name: git-clone
       params:
@@ -55,6 +56,7 @@ spec:
           workspace: basic-auth
 
     - name: create-tekton-resources
+      displayName: Create Tekton resources
       taskRef:
         name: create-tekton-resources
       runAfter:
@@ -64,6 +66,7 @@ spec:
           workspace: source
 
     - name: detect-changed-components
+      displayName: Detect subprojects with changes
       taskRef:
         name: detect-changed-components
       runAfter:
@@ -78,6 +81,7 @@ spec:
           workspace: source
 
     - name: build-deploy-changed-components
+      displayName: Trigger pipeline to build & deploy subprojects
       taskRef:
         name: trigger-components-build
       runAfter:

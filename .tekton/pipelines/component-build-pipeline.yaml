@@ -43,6 +43,7 @@ spec:
 
   tasks:
     - name: build-and-push-component
+      displayName: Build and push subproject's OCI image
       taskRef:
         name: build-push-image
       params:
@@ -61,6 +62,7 @@ spec:
           workspace: docker-config
 
     - name: deploy-application
+      displayName: Deploy application to Kubernetes cluster
       taskRef:
         name: deploy-to-kubernetes
       runAfter:
