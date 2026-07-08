@@ -26,6 +26,9 @@ spec:
       description: Maximum concurrent build for component pipeline
       type: string
       default: "3"
+    - name: github-webhook-secret-name
+      description: GitHub webhook secret name
+      type: string
 
   workspaces:
     - name: source
