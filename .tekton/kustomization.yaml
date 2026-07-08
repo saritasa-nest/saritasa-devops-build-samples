@@ -1,6 +1,4 @@
 resources:
-- pvc.yaml
-- rbac.yaml
 - ./pipelines
 - ./tasks
 
