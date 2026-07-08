@@ -85,6 +85,8 @@ spec:
           value: "$(params.revision)"
         - name: pipeline-role
           value: "component"
+        - name: revision
+          value: "$(params.revision)"
       workspaces:
         - name: source
           workspace: source
