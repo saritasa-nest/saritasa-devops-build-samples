@@ -19,6 +19,10 @@ spec:
       description: Role of current pipeline (orchestrator/component)
       type: string
       default: "orchestrator"
+    - name: revision
+      description: Git commit SHA of the current revision
+      type: string
+      default: ""
 
   workspaces:
     - name: source
@@ -27,10 +31,6 @@ spec:
   steps:
     - name: clean-up-source-directory
       image: alpine/k8s:1.33.13
-      # when:
-      #   input: "$(params.pipeline-role)"
-      #   operator: in
-      #   values: ["component"]
       script: |
         #!/bin/bash
         set -eu
@@ -63,15 +63,10 @@ spec:
 
     - name: clean-up-webhook-secret
       image: alpine/k8s:1.33.13
-      # when:
-      #   input: "$(params.pipeline-role)"
-      #   operator: in
-      #   values: ["orchestrator"]
       script: |
         #!/bin/bash
         set -eu
-
-        
+   
         if [ "$(params.pipeline-role)" = "orchestrator" ]; then
           # Github webhook secret
           echo "Removing Github webhook secret..."
