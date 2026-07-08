@@ -61,6 +61,9 @@ spec:
         name: create-tekton-resources
       runAfter:
         - fetch-repository
+      params:
+        - name: source-directory
+          value: "$(params.revision)"
       workspaces:
         - name: source
           workspace: source

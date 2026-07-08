@@ -6,6 +6,13 @@ metadata:
 spec:
   description: A task to create Tekton resources to support running pipelines to build and deploy components.
 
+  params:
+    - name: source-directory
+      description: Subdirectory to contain source code
+      type: string
+      default: ""
+
+
   workspaces:
     - name: source
       description: Workspace containing this repository's source code
@@ -13,7 +20,7 @@ spec:
   steps:
     - name: create-resources
       image: alpine/k8s:1.33.13
-      workingDir: $(workspaces.source.path)
+      workingDir: $(workspaces.source.path)/$(params.source-directory)
       script: |
         #!/bin/bash
         set -eu
