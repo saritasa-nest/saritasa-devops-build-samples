@@ -2,7 +2,6 @@ apiVersion: tekton.dev/v1
 kind: Task
 metadata:
   name: trigger-components-build
-  namespace: saritasa-devops-project
 spec:
   description: A task to trigger builds for changed components
 

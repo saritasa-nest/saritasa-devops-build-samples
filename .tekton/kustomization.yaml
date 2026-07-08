@@ -1,0 +1,7 @@
+resources:
+- pvc.yaml
+- rbac.yaml
+- ./pipelines
+- ./tasks
+
+namespace: saritasa-devops-project

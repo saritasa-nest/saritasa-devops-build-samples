@@ -2,7 +2,6 @@ apiVersion: tekton.dev/v1
 kind: Task
 metadata:
   name: build-push-image
-  namespace: saritasa-devops-project
 spec:
   description: A task to build source code using Buildpacks pack CLI and push image using Docker CLI
 

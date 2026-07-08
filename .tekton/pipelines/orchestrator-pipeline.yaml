@@ -2,7 +2,6 @@ apiVersion: tekton.dev/v1
 kind: Pipeline
 metadata:
   name: orchestrator-pipeline
-  namespace: saritasa-devops-project
 spec:
   description: |
     This pipeline detects changes in subprojects and orchestrates build to deploy updated components.

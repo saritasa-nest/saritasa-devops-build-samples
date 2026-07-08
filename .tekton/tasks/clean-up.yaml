@@ -2,7 +2,6 @@ apiVersion: tekton.dev/v1
 kind: Task
 metadata:
   name: clean-up
-  namespace: saritasa-devops-project
 spec:
   description: A task to clean up resources spun up from this PipelineRun and its descending PipelineRuns
 

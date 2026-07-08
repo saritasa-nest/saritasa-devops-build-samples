@@ -2,7 +2,6 @@ apiVersion: tekton.dev/v1
 kind: Pipeline
 metadata:
   name: component-build-pipeline
-  namespace: saritasa-devops-project
 spec:
   description: |
     This pipeline builds, pushes a component's OCI image and deploy to Kubernetes

@@ -2,7 +2,6 @@ apiVersion: tekton.dev/v1
 kind: Task
 metadata:
   name: detect-changed-components
-  namespace: saritasa-devops-project
 spec:
   description: A task to detect which components in this repository have changes
 
