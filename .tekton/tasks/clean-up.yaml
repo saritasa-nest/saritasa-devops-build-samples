@@ -57,9 +57,7 @@ spec:
           echo "Cleaning up source workspace..."
 
           if [ -d "$SOURCE_DIR" ]; then
-            ls -la "$SOURCE_DIR"
             rm -rf "$SOURCE_DIR"
-            ls -la "$SOURCE_DIR"
           else
             rm -rf "$(workspaces.source.path)"
           fi
