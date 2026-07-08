@@ -44,6 +44,8 @@ spec:
             | jq --arg revision "$(params.revision)" '.items[] | select(.metadata.annotations["saritasa.tekton.dev/commit-sha"] == $revision) | select(.status.conditions[0].reason == "Running") | .metadata.name' \
             | wc -l)
 
+          echo -n "Current running builds: $RUNNING_BUILDS"
+
           if [ "$RUNNING_BUILDS" -ne 1 ]; then
             echo "There are still running builds, skipping clean up."
             exit 0
