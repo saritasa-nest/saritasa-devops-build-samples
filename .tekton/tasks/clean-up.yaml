@@ -39,7 +39,7 @@ spec:
           SOURCE_DIR="$(workspaces.source.path)/$(params.source-directory)"
 
           RUNNING_BUILDS=$(kubectl get pipelineruns -n "$(kubectl get repository -A -o jsonpath='{.items[0].metadata.namespace}')" \
-            -l tekton.dev/pipeline=build-deploy-single-component \
+            -l tekton.dev/pipeline=component-build-pipeline \
             -o json 2>/dev/null \
             | jq --arg revision "$(params.revision)" '.items[] | select(.metadata.annotations["saritasa.tekton.dev/commit-sha"] == $revision) | select(.status.conditions[0].reason == "Running") | .metadata.name' \
             | wc -l)

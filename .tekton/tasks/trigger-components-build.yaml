@@ -104,7 +104,7 @@ spec:
 
             # Scarcity control to prevent run too many PipelineRun concurrently
             RUNNING_BUILDS=$(kubectl get pipelineruns -n $PARENT_NAMESPACE \
-              -l tekton.dev/pipeline=build-deploy-single-component \
+              -l tekton.dev/pipeline=component-build-pipeline \
               -o json 2>/dev/null \
               | jq --arg revision "$REVISION" '.items[] | select(.metadata.annotations["saritasa.tekton.dev/commit-sha"] == $revision) | select(.status.conditions[0].reason == "Running") | .metadata.name' \
               | wc -l)
@@ -115,7 +115,7 @@ spec:
               echo "Max concurrent builds reached ($RUNNING_BUILDS >= $MAX_CONCURRENT). Waiting for available slots..."
               sleep 10
               RUNNING_BUILDS=$(kubectl get pipelineruns -n $PARENT_NAMESPACE \
-                -l tekton.dev/pipeline=build-deploy-single-component \
+                -l tekton.dev/pipeline=component-build-pipeline \
                 -o json 2>/dev/null \
                 | jq --arg revision "$REVISION" '.items[] | select(.metadata.annotations["saritasa.tekton.dev/commit-sha"] == $revision) | select(.status.conditions[0].reason == "Running") | .metadata.name' \
                 | wc -l)
