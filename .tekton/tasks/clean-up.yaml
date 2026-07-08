@@ -56,6 +56,9 @@ spec:
           else
             rm -rf "$(workspaces.source.path)"/*
           fi
+        else
+          echo -n "Is not a component pipeline, skipping clean up."
+          exit 0
         fi
 
     - name: clean-up-webhook-secret
@@ -73,6 +76,9 @@ spec:
           # Github webhook secret
           echo "Removing Github webhook secret..."
           kubectl delete secret "$(params.github-webhook-secret-name)" --ignore-not-found -n $(kubectl get repository -A -o jsonpath='{.items[0].metadata.namespace}')
+        else
+          echo -n "Is not an orchestrator pipeline, skipping clean up."
+          exit 0
         fi
 
         
