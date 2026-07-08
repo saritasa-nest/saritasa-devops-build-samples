@@ -32,6 +32,7 @@ spec:
     - name: clean-up-source-directory
       image: alpine/k8s:1.33.13
       workingDir: $(workspaces.source.path)
+      onError: continue
       script: |
         #!/bin/bash
         set -eu
@@ -56,6 +57,7 @@ spec:
           echo "Cleaning up source workspace..."
 
           if [ -d "$SOURCE_DIR" ]; then
+            ls -la "$SOURCE_DIR"
             rm -rf "$SOURCE_DIR"
             ls -la "$SOURCE_DIR"
           else
@@ -80,5 +82,3 @@ spec:
           echo -n "Is not an orchestrator pipeline, skipping clean up."
           exit 0
         fi
-
-        
