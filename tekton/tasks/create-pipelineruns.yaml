@@ -13,11 +13,12 @@ spec:
       description: Git repository URL to build.
     - name: image_prefix
       type: string
-      default: docker.io/lbcristaldo
       description: Docker Hub registry prefix for images.
+    - name: builder_image
+      type: string
+      description: Buildpack builder image reference for the Paketo lifecycle.
     - name: git_revision
       type: string
-      default: main
       description: Git revision for builds.
     - name: namespace
       type: string
@@ -46,6 +47,7 @@ spec:
         git_url="$(params.git_url)"
         image_prefix="$(params.image_prefix)"
         git_revision="$(params.git_revision)"
+        builder_image="$(params.builder_image)"
         namespace="$(params.namespace)"
         service_account_name="$(params.service_account_name)"
         max_concurrent="$(params.max_concurrent)"
@@ -88,6 +90,8 @@ spec:
                   value: "${component}"
                 - name: image
                   value: "${image}"
+                - name: builder_image
+                  value: "${builder_image}"
                 - name: deployment_name
                   value: "${deployment}"
                 - name: namespace

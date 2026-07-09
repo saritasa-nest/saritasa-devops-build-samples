@@ -49,9 +49,12 @@ kubectl apply -f k8s/triggers-rbac.yaml
 ## Phase 2-3: Apply Tasks and Pipeline (with error handling)
 
 ```bash
-# Apply Tasks
+# Apply Tasks using kustomization.yaml 
+kubectl apply -k .
+
+# Apply Tasks (manual version if preferred)
 kubectl apply -f tekton/tasks/git-clone.yaml
-kubectl apply -f tekton/tasks/paketo-build.yaml
+kubectl apply -f tekton/tasks/buildpacks-creator.yaml
 kubectl apply -f tekton/tasks/patch-deployment.yaml
 kubectl apply -f tekton/tasks/detect-components.yaml
 kubectl apply -f tekton/tasks/create-pipelineruns.yaml

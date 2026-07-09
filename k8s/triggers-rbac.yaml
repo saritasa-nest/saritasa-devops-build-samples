@@ -2,13 +2,11 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: tekton-triggers-sa
-  namespace: tekton-pipelines
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: tekton-triggers-role
-  namespace: tekton-pipelines
 rules:
   - apiGroups:
       - tekton.dev
@@ -70,11 +68,9 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: tekton-triggers-rolebinding
-  namespace: tekton-pipelines
 subjects:
   - kind: ServiceAccount
     name: tekton-triggers-sa
-    namespace: tekton-pipelines
 roleRef:
   kind: Role
   name: tekton-triggers-role
@@ -87,48 +83,7 @@ metadata:
 subjects:
   - kind: ServiceAccount
     name: tekton-triggers-sa
-    namespace: tekton-pipelines
 roleRef:
   kind: ClusterRole
   name: tekton-triggers-cluster-role
-  apiGroup: rbac.authorization.k8s.io
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
-metadata:
-  name: pipeline-role
-  namespace: default
-rules:
-  - apiGroups:
-      - apps
-    resources:
-      - deployments
-    verbs:
-      - get
-      - list
-      - patch
-      - update
-  - apiGroups:
-      - ""
-    resources:
-      - pods
-      - services
-    verbs:
-      - get
-      - list
-      - patch
-      - update
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: pipeline-rolebinding
-  namespace: default
-subjects:
-  - kind: ServiceAccount
-    name: tekton-triggers-sa
-    namespace: tekton-pipelines
-roleRef:
-  kind: Role
-  name: pipeline-role
   apiGroup: rbac.authorization.k8s.io

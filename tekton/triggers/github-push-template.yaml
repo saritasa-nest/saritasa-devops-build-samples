@@ -12,6 +12,8 @@ spec:
       description: New commit SHA.
     - name: image_prefix
       description: Docker registry prefix.
+    - name: builder_image
+      description: Buildpack builder image reference for the Paketo lifecycle.
     - name: max_concurrent
       description: Max concurrent builds.
     - name: pipeline_namespace
@@ -41,6 +43,8 @@ spec:
             value: $(tt.params.max_concurrent)
           - name: pipeline_namespace
             value: $(tt.params.pipeline_namespace)
+          - name: builder_image
+            value: $(tt.params.builder_image)
         workspaces:
           - name: source
             persistentVolumeClaim:

@@ -19,6 +19,9 @@ spec:
     - name: image
       type: string
       description: Full image reference to publish, for example docker.io/lbcristaldo/component:sha-abc123.
+    - name: builder_image
+      type: string
+      description: Buildpack builder image reference for the Paketo lifecycle.
     - name: deployment_name
       type: string
       description: Name of the deployment to update.
@@ -76,6 +79,8 @@ spec:
           value: $(params.image)
         - name: component_path
           value: $(params.component_path)
+        - name: builder_image
+          value: $(params.builder_image)
       workspaces:
         - name: source
           workspace: source

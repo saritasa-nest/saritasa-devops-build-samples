@@ -18,6 +18,9 @@ spec:
       type: string
       default: docker.io/lbcristaldo
       description: Docker Hub registry prefix.
+    - name: builder_image
+      type: string
+      description: Buildpack builder image reference for the Paketo lifecycle.
     - name: max_concurrent
       type: string
       default: "2"
@@ -81,6 +84,8 @@ spec:
           value: $(params.git_url)
         - name: image_prefix
           value: $(params.image_prefix)
+        - name: builder_image
+          value: $(params.builder_image)
         - name: git_revision
           value: $(params.new_sha)
         - name: namespace
