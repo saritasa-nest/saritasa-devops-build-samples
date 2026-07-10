@@ -1,3 +1,7 @@
+# TODO: Not currently referenced in build-and-deploy pipeline.
+# Rationale: Core tasks prioritized; this notification step is cosmetic and
+# deferred to minimize troubleshooting complexity. Will be integrated later
+# with proper params passed from the pipeline.
 apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
