@@ -1,0 +1,7 @@
+resources:
+- build-push-image.yaml
+- create-tekton-resources.yaml
+- deploy-to-kubernetes.yaml
+- detect-changed-components.yaml
+- git-clone.yaml
+- trigger-components-build.yaml

@@ -1,0 +1,65 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: detect-changed-components
+spec:
+  description: A task to detect which components in this repository have changes
+
+  params:
+    - name: base-revision
+      description: Optional base commit SHA to diff from (for example, the push "before" SHA)
+      type: string
+      default: ""
+    - name: source-directory
+      description: Subdirectory to contain source code
+      type: string
+      default: ""
+
+  workspaces:
+    - name: source
+      description: Workspace containing this repository's source code
+  
+  results:
+    - name: changed-dirs
+      description: All directories with file changes
+      type: string
+
+  steps:
+    - name: detect-change
+      image: alpine/git:latest
+      workingDir: $(workspaces.source.path)/$(params.source-directory)
+      script: |
+        #!/bin/sh
+        set -eu
+
+        git config --global --add safe.directory .
+
+        base_revision="$(params.base-revision)"
+        null_sha="0000000000000000000000000000000000000000"
+        diff_from=""
+
+        # Prefer an explicit base revision from the trigger event when provided.
+        # Ignore all-zero SHA used by Git providers to represent an empty "before" revision.
+        if [ -n "$base_revision" ] && [ "$base_revision" != "$null_sha" ] && git rev-parse --verify --quiet "$base_revision^{commit}" >/dev/null; then
+          diff_from="$base_revision"
+        else
+          # Fall back to the merge-base with origin/HEAD to include multi-commit branch pushes.
+          default_remote_head="$(git symbolic-ref --quiet --short refs/remotes/origin/HEAD || true)"
+          if [ -n "$default_remote_head" ]; then
+            merge_base="$(git merge-base "$default_remote_head" HEAD || true)"
+            if [ -n "$merge_base" ] && [ "$merge_base" != "$(git rev-parse HEAD)" ]; then
+              diff_from="$merge_base"
+            fi
+          fi
+        fi
+
+        # If no suitable base is found (e.g., shallow/initial history), use only the current commit's file list.
+        if [ -n "$diff_from" ]; then
+          changed_files="$(git diff "$diff_from" HEAD --name-only)"
+        else
+          changed_files="$(git diff-tree --no-commit-id --name-only -r HEAD)"
+        fi
+
+        changed_dirs="$(printf '%s\n' "$changed_files" | sed '/^$/d' | xargs -I {} dirname "{}" | sort -u | tr '\n' ' ' | sed 's/[[:space:]]*$//')"
+
+        printf "%s" "$changed_dirs" | tee "$(results.changed-dirs.path)"

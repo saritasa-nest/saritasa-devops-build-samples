@@ -1,0 +1,145 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: build-push-image
+spec:
+  description: A task to build source code using Buildpacks pack CLI and push image using Docker CLI
+
+  params:
+    - name: image-url
+      description: URL of the image to be built and pushed
+    - name: image-tag
+      description: Tag of the image to be built by Paketo
+    - name: component-dir
+      description: Path of the component directory with changes
+    - name: source-directory
+      description: Subdirectory to contain source code
+      type: string
+      default: ""
+
+  workspaces:
+    - name: source
+      description: Workspace containing this repository's source code
+    - name: docker-config
+      description: Docker's config.json for pushing image
+
+  results:
+    - name: image-full-url
+      description: Full URL of the built image
+    - name: push-result
+      description: Whether image is pushed successfully or failed
+    - name: component-name
+      description: Name of the component with changes
+
+  # This volume is for Pod in Minikube can interact with local Docker registry
+  volumes:
+    - name: docker-socket
+      hostPath:
+        path: /var/run/docker.sock
+        type: Socket
+
+  steps:
+    - name: build-image
+      image: buildpacksio/pack:base
+      workingDir: $(workspaces.source.path)/$(params.source-directory)
+      env:
+        - name: DOCKER_HOST
+          value: unix:///var/run/docker.sock
+      volumeMounts:
+        - name: docker-socket
+          mountPath: /var/run/docker.sock
+          readOnly: true
+      script: |
+        #!/bin/bash
+        set -eu
+
+        ROOT="$(workspaces.source.path)/$(params.source-directory)"
+        COMPONENT_DIR="$(params.component-dir)"
+        INPUT="${COMPONENT_DIR#./}"
+        INPUT="${INPUT%/}"
+        [ -n "$INPUT" ] || INPUT="."
+
+        CANDIDATE="$ROOT/$INPUT"
+
+        # Walk up to nearest existing directory in case path was deleted
+        while [ ! -e "$CANDIDATE" ] && [ "$CANDIDATE" != "$ROOT" ]; do
+          CANDIDATE="$(dirname "$CANDIDATE")"
+        done
+        [ -d "$CANDIDATE" ] || CANDIDATE="$(dirname "$CANDIDATE")"
+
+        # Walk up from the changed directory until a build marker is found
+        MARKERS="package.json go.mod pom.xml build.gradle build.gradle.kts requirements.txt Pipfile pyproject.toml composer.json Gemfile Rakefile Procfile nginx.conf"
+        RESOLVED=""
+        SCAN="$CANDIDATE"
+        while :; do
+          for M in $MARKERS; do
+            if [ -f "$SCAN/$M" ]; then
+              RESOLVED="$SCAN"
+              break 2
+            fi
+          done
+          [ "$SCAN" = "$ROOT" ] && break
+          PARENT="$(dirname "$SCAN")"
+          [ "$PARENT" = "$SCAN" ] && break
+          SCAN="$PARENT"
+        done
+
+        # Fallback: use candidate dir if no marker found
+        [ -n "$RESOLVED" ] || RESOLVED="$CANDIDATE"
+
+        echo "--- Changed path: $INPUT ---"
+        echo "--- Build root: ${RESOLVED#"$ROOT"/} ---"
+
+        cd "$RESOLVED"
+        echo "--- Ready to build image at $(pwd) ---"
+
+        pack build $(params.image-url):$(params.image-tag) --path "$(pwd)" --builder paketobuildpacks/builder-jammy-full --verbose
+
+        component_name="${RESOLVED#"$ROOT"/}"
+        component_name="${component_name//\//-}"
+        component_name="${component_name//./}"
+        component_name="${component_name//_/-}"
+        
+        echo -n "$component_name" > $(results.component-name.path)
+        echo -n "$(params.image-url):$(params.image-tag)" > $(results.image-full-url.path)
+
+    - name: push-image
+      image: docker:latest
+      env:
+        - name: DOCKER_HOST
+          value: unix:///var/run/docker.sock
+      volumeMounts:
+        - name: docker-socket
+          mountPath: /var/run/docker.sock
+          readOnly: true
+      script: |
+        #!/bin/sh
+        set -eu
+
+        IMAGE_URL="$(params.image-url):$(params.image-tag)"
+        DOCKER_CONFIG_PATH="$(workspaces.docker-config.path)"
+
+        echo "--- Pushing $IMAGE_URL ---"
+
+        # Check if Docker config is provided
+        if [ -d "$DOCKER_CONFIG_PATH" ] && [ -f "$DOCKER_CONFIG_PATH/config.json" ]; then
+          echo "Using Docker config from workspace"
+          export DOCKER_CONFIG="$DOCKER_CONFIG_PATH"
+        fi
+
+        # Push image
+        echo "Pushing image $IMAGE_URL"
+        if docker push $IMAGE_URL; then
+          echo ""
+          echo "Image pushed successfully"
+          echo "Image URL: $IMAGE_URL"
+
+          # Write result
+          echo -n "successful" > $(results.push-result.path)
+        else
+          echo ""
+          echo "Failed to push image $IMAGE_URL"
+
+          echo -n "failed" > $(results.push-result.path)
+          exit 1
+        fi

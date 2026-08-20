@@ -1,0 +1,44 @@
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  name: build-project-feature-push-run
+  annotations:
+    pipelinesascode.tekton.dev/on-event: "[push]"
+    pipelinesascode.tekton.dev/on-target-branch: "[features/**]"
+    pipelinesascode.tekton.dev/max-keep-runs: "5"
+    pipelinesascode.tekton.dev/on-path-change-ignore: "[.tekton/**, go.mod, go.sum, LICENSE, NOTICE, README.md, .editorconfig, Taskfile.yaml]"
+    tekton.dev/auto-cleanup-pvc: "true"
+spec:
+  timeout:
+    pipeline: 1h
+
+  taskRunTemplate:
+    serviceAccountName: ci
+
+  params:
+    # The variable with brackets are special to Pipelines-as-Code
+    # They will automatically be expanded with the events from GitHub.
+    - name: repo-url
+      value: "{{ repo_url }}"
+    - name: revision
+      value: "{{ revision }}"
+    - name: base-revision
+      value: "{{ body.before }}"
+    # This value needs updating to match your image repository
+    # Its value should have this pattern: "<registry>/<repository>"
+    - name: image-repository
+      value: jackdock777
+      
+  pipelineRef:
+    name: orchestrator-pipeline
+
+  workspaces:
+    - name: source
+      persistentVolumeClaim:
+        claimName: repository-source-pvc
+
+    # This workspace will inject secret to help the git-clone task to be able to
+    # checkout the private repositories
+    - name: basic-auth
+      secret:
+        secretName: "{{ git_auth_secret }}"

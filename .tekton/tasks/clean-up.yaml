@@ -1,0 +1,81 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: clean-up
+spec:
+  description: A task to clean up resources spun up from this PipelineRun and its descending PipelineRuns
+
+  params:
+    - name: source-directory
+      description: Subdirectory to contain source code
+      type: string
+      default: ""
+    - name: github-webhook-secret-name
+      description: Name of Github webhook's K8S secret
+      type: string
+      default: ""
+    - name: pipeline-role
+      description: Role of current pipeline (orchestrator/component)
+      type: string
+      default: "orchestrator"
+    - name: revision
+      description: Git commit SHA of the current revision
+      type: string
+      default: ""
+
+  workspaces:
+    - name: source
+      description: Workspace containing this repository's source code
+
+  steps:
+    - name: clean-up-source-directory
+      image: alpine/k8s:1.33.13
+      workingDir: $(workspaces.source.path)
+      onError: continue
+      script: |
+        #!/bin/bash
+        set -eu
+
+        if [ "$(params.pipeline-role)" = "component" ]; then
+          SOURCE_DIR="$(workspaces.source.path)/$(params.source-directory)"
+
+          RUNNING_BUILDS=$(kubectl get pipelineruns -n "$(kubectl get repository -A -o jsonpath='{.items[0].metadata.namespace}')" \
+            -l tekton.dev/pipeline=component-build-pipeline \
+            -o json 2>/dev/null \
+            | jq --arg revision "$(params.revision)" '.items[] | select(.metadata.annotations["saritasa.tekton.dev/commit-sha"] == $revision) | select(.status.conditions[0].reason == "Running") | .metadata.name' \
+            | wc -l)
+
+          echo "Current running builds: $RUNNING_BUILDS"
+          echo ""
+
+          if [ "$RUNNING_BUILDS" -ne 1 ]; then
+            echo "There are still running builds, skipping clean up."
+            exit 0
+          fi
+
+          echo "Cleaning up source workspace..."
+
+          if [ -d "$SOURCE_DIR" ]; then
+            rm -rf "$SOURCE_DIR"
+          else
+            rm -rf "$(workspaces.source.path)"
+          fi
+        else
+          echo -n "Is not a component pipeline, skipping clean up."
+          exit 0
+        fi
+
+    - name: clean-up-webhook-secret
+      image: alpine/k8s:1.33.13
+      script: |
+        #!/bin/bash
+        set -eu
+   
+        if [ "$(params.pipeline-role)" = "orchestrator" ]; then
+          # Github webhook secret
+          echo "Removing Github webhook secret..."
+          kubectl delete secret "$(params.github-webhook-secret-name)" --ignore-not-found -n $(kubectl get repository -A -o jsonpath='{.items[0].metadata.namespace}')
+        else
+          echo -n "Is not an orchestrator pipeline, skipping clean up."
+          exit 0
+        fi

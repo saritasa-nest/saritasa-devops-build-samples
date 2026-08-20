@@ -1,0 +1,113 @@
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ci
+  namespace: saritasa-devops-project
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  creationTimestamp: null
+  name: tekton-trigger-pipelines
+rules:
+  - apiGroups:
+      - tekton.dev
+    resources:
+      - pipelineruns
+      - taskruns
+      - pipelines
+      - tasks
+    verbs:
+      - create
+      - delete
+      - deletecollection
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  
+  # Deployment management (for component deployment)
+  - apiGroups:
+      - apps
+    resources:
+      - deployments
+      - deployments/rollback
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  
+  # Service management
+  - apiGroups:
+      - ""
+    resources:
+      - services
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+
+    # Namespace management
+  - apiGroups:
+      - ""
+    resources:
+      - namespaces
+    verbs:
+      - create
+      - get
+      - list
+      - patch
+      - update
+
+  # Pod management
+  - apiGroups:
+      - ""
+    resources:
+      - pods
+      - pods/log
+    verbs:
+      - get
+      - list
+      - watch
+
+  # Repository CR management
+  - apiGroups:
+      - pipelinesascode.tekton.dev
+    resources:
+      - repositories
+    verbs:
+      - get
+      - list
+      - watch
+
+  # Secret
+  - apiGroups:
+      - ""
+    resources:
+      - secrets
+    verbs:
+      - delete
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  creationTimestamp: null
+  name: saritasa-trigger-pipelinerun-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: tekton-trigger-pipelines
+subjects:
+- kind: ServiceAccount
+  name: ci
+  namespace: saritasa-devops-project

@@ -1,0 +1,111 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: deploy-to-kubernetes
+spec:
+  description: A task to deploy component's built image to Kubernetes cluster
+
+  params:
+    - name: component-name
+      type: string
+      description: Name of the component
+    - name: replicas
+      type: string
+      description: Number of replicas for the deployment
+      default: "1"
+    - name: namespace
+      type: string
+      description: Namespace of the Kubernetes deployment
+      default: "default"
+    - name: image-url
+      type: string
+      description: URL of the component-built image
+    - name: timeout
+      type: string
+      description: Timeout for the rollout status check
+      default: "1m"
+
+  results:
+    - name: action
+      description: The `kubectl` action performed (create or patch)
+    - name: status
+      description: The status of the `kubectl` action (success or failure)
+    
+  steps:
+    - name: deploy
+      image: alpine/k8s:1.33.13
+      script: |
+        #!/bin/bash
+        set -eu
+
+        REPLICAS="$(params.replicas)"
+        IMAGE_URL="$(params.image-url)"
+        NAMESPACE="$(params.namespace)"
+        ROLLOUT_TIMEOUT="$(params.timeout)"
+        DEPLOYMENT_NAME="$(params.component-name)-deployment"
+        SERVICE_NAME="$(params.component-name)-service"
+        COMPONENT="$(params.component-name)"
+
+        echo "--- Deploying Component to Kubernetes ---"
+        echo "Component: $COMPONENT"
+        echo "Image: $IMAGE_URL"
+        echo "Deployment: $DEPLOYMENT_NAME"
+        echo "Namespace: $NAMESPACE"
+        echo "Replicas: $REPLICAS"
+        echo ""
+
+        # Create namespace if it doesn't exist
+        kubectl create namespace "$NAMESPACE" --dry-run=client -o yaml | kubectl apply -f -
+
+        # Check if the deployment exists
+        if kubectl get deployment ""$DEPLOYMENT_NAME"" -n ""$NAMESPACE"" > /dev/null; then
+            echo "Deployment exists, patching with new image..."
+            
+            echo -n "patch" > $(results.action.path)
+
+            if kubectl set image deployment "$DEPLOYMENT_NAME" \
+                "${COMPONENT}"="${IMAGE_URL}" \
+                -n "$NAMESPACE"; then
+
+                echo ""
+
+                echo -e "New image applied succesfully."
+                echo -n "succeeded" > $(results.status.path)
+            else
+                echo -e "Failed to apply new image."
+                echo -n "failed" > $(results.status.path)
+
+                exit 1
+            fi
+        else
+            echo "Creating new deployment..."
+            kubectl create deployment "$DEPLOYMENT_NAME" -n "$NAMESPACE" --image $IMAGE_URL --replicas $REPLICAS --dry-run=client -o yaml | kubectl apply -f -
+
+            echo "Creating a service..."
+            kubectl expose deployment "$DEPLOYMENT_NAME" \
+              -n "$NAMESPACE" \
+              --port=80 \
+              --target-port=8080 \
+              --name "$SERVICE_NAME"
+
+            echo -n "create" > $(results.action.path)
+
+            echo ""
+            echo "Waiting for deployment to be ready..."
+            if kubectl rollout status deployment "$DEPLOYMENT_NAME" \
+                -n "$NAMESPACE" \
+                --timeout "$ROLLOUT_TIMEOUT"; then
+
+              echo -e "Rollout completed successfully."
+            
+              # Write result
+              echo -n "succeeded" > $(results.status.path)
+            else
+              echo -e "Rollout timeout"
+
+              # Write result
+              echo -n "failed" > $(results.status.path)
+              exit 1
+            fi
+        fi
+        

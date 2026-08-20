@@ -1,0 +1,44 @@
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  name: "{{ pipeline_run_name }}"
+  namespace: "{{ namespace }}"
+  annotations:
+    pipelinesascode.tekton.dev/max-keep-runs: "5"
+    saritasa.tekton.dev/commit-sha: "{{ commit_sha }}"
+    tekton.dev/auto-cleanup-pvc: "true"
+spec:
+  timeouts:
+    pipeline: 30m
+
+  taskRunTemplate:
+    serviceAccountName: ci
+
+  params:
+    - name: repo-url
+      value: "{{ repo_url }}"
+    - name: revision
+      value: "{{ revision }}"
+    - name: project-dir
+      value: "{{ project_dir }}"
+    - name: image-url
+      value: "{{ image_url }}"
+    - name: image-tag
+      value: "{{ image_tag }}"
+    - name: component-name
+      value: "{{ component_name }}"
+    - name: source-directory
+      value: "{{ source_directory }}"
+
+  pipelineRef:
+    name: component-build-pipeline
+
+  workspaces:
+    - name: source
+      persistentVolumeClaim:
+        claimName: repository-source-pvc
+
+    # Docker config
+    - name: docker-config
+      secret:
+        secretName: docker-config
