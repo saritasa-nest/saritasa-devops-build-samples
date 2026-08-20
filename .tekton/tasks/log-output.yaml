@@ -1,0 +1,24 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: log-output
+spec:
+  description: A task to log output from previous task
+
+  params:
+    - name: succeeded
+      description: Status of the previous task
+      type: string
+    - name: message
+      description: Log message from previous task
+      type: string
+
+  steps:
+    - name: log-output
+      image: alpine:3.18.3
+      script: |
+        #!/bin/sh
+        set -eu
+
+        echo "Previous task status: $(params.succeeded)"
+        echo "Message: $(params.message)"

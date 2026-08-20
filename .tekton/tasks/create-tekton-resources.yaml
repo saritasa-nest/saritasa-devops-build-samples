@@ -26,15 +26,6 @@ spec:
 
         # TEKTON_RESOURCES_DIR=(".tekton/tasks" ".tekton/pipelines")
 
-        # for dir in "${TEKTON_RESOURCES_DIR[@]}"; do
-        #     echo ""
-        #     echo "Creating resources in $dir..."
-        #     find "$dir" -type f | while read -r file; do
-        #         echo "$file"
-        #         kubectl apply -f $file
-        #     done
-        # done
-        
         echo ""
         echo "Creating Tekton resources in .tekton directory..."
         kubectl apply -k .tekton
